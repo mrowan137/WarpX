@@ -217,6 +217,13 @@ protected:
 
   amrex::Vector<amrex::Cuda::DeviceVector<amrex::Real> > m_xp, m_yp, m_zp, m_giv;
   
+private:
+  virtual void particlePostLocate(ParticleType& p, const amrex::ParticleLocData& pld,
+								  const int lev) override;
+
+  virtual void particlePostReceive(ParticleType& p, ParticleTileType& ptile, 
+								   const amrex::Real* rdata, 
+								   const int particle_size) override;
 };
 
 #endif
