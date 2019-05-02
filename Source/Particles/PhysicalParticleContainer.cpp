@@ -1,12 +1,13 @@
 #include <limits>
 #include <sstream>
 
+#include <AMReX_GpuTimer.H>
+
 #include <MultiParticleContainer.H>
 #include <WarpX_f.H>
 #include <WarpX.H>
 #include <WarpXConst.H>
 #include <WarpXWrappers.h>
-
 
 using namespace amrex;
 
@@ -1005,7 +1006,7 @@ PhysicalParticleContainer::FieldGather (int lev,
 
 	for (WarpXParIter pti(*this, lev); pti.isValid(); ++pti)
 	{
-            Real wt = amrex::second();
+            amrex::GpuTimer t();
 
 	    const Box& box = pti.validbox();
 
@@ -1068,9 +1069,11 @@ PhysicalParticleContainer::FieldGather (int lev,
 	       &ll4symtry, &WarpX::l_lower_order_in_v, &WarpX::do_nodal,
 	       &lvect_fieldgathe, &WarpX::field_gathering_algo);
 
+		    Real elapsed_time = t.stop();
+
             if (cost) {
                 const Box& tbx = pti.tilebox();
-                wt = (amrex::second() - wt) / tbx.d_numPts();
+                Real wt = elapsed_time / tbx.d_numPts();
                 FArrayBox* costfab = cost->fabPtr(pti);
                 AMREX_LAUNCH_HOST_DEVICE_LAMBDA ( tbx, work_box,
                 {
@@ -1133,6 +1136,11 @@ PhysicalParticleContainer::Evolve (int lev,
 	for (WarpXParIter pti(*this, lev); pti.isValid(); ++pti)
 	{
             Real wt = amrex::second();
+            cudaEvent_t start, stop;
+            cudaEventCreate(&start);
+            cudaEventCreate(&stop);
+
+            cudaEventRecord(start);
 
 	    const Box& box = pti.validbox();
 
@@ -1492,9 +1500,22 @@ PhysicalParticleContainer::Evolve (int lev,
             
             if (rho) DepositCharge(pti, wp, rho, crho, 1, np_current, np, thread_num, lev);
 
+            cudaEventRecord(stop);
+
+            cudaEventSynchronize(stop);
+
+            float time = 0.0;
+            cudaEventElapsedTime(&time, start, stop);
+
             if (cost) {
                 const Box& tbx = pti.tilebox();
+#ifdef AMREX_USE_CUDA
+                float time = 0.0;
+                cudaEventElapsedTime(&time, start, stop);
+                wt = (time) / tbx.d_numPts();
+#else
                 wt = (amrex::second() - wt) / tbx.d_numPts();
+#endif
                 FArrayBox* costfab = cost->fabPtr(pti);
                 AMREX_LAUNCH_HOST_DEVICE_LAMBDA ( tbx, work_box,
                 {
