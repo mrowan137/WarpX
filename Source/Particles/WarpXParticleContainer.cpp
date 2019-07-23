@@ -108,7 +108,6 @@ WarpXParticleContainer::WarpXParticleContainer (AmrCore* amr_core, int ispecies)
     m_xp.resize(num_threads);
     m_yp.resize(num_threads);
     m_zp.resize(num_threads);
-    m_giv.resize(num_threads);
 }
 
 void
@@ -386,7 +385,6 @@ WarpXParticleContainer::DepositCurrentFortran(WarpXParIter& pti,
         uxp.dataPtr() + offset,
         uyp.dataPtr() + offset,
         uzp.dataPtr() + offset,
-        m_giv[thread_num].dataPtr() + offset,
         wp.dataPtr() + offset, &this->charge,
         &xyzmin[0], &xyzmin[1], &xyzmin[2],
         &dt, &dx[0], &dx[1], &dx[2],
@@ -883,11 +881,11 @@ std::array<Real, 3> WarpXParticleContainer::meanParticleVelocity(bool local) {
             np_total += pti.numParticles();
 
             for (unsigned long i = 0; i < ux.size(); i++) {
-                Real usq = (ux[i]*ux[i] + uy[i]*uy[i] + uz[i]*uz[i])*inv_clight_sq;
-                Real gaminv = 1.0/std::sqrt(1.0 + usq);
-                vx_total += ux[i]*gaminv;
-                vy_total += uy[i]*gaminv;
-                vz_total += uz[i]*gaminv;
+                const Real usq = (ux[i]*ux[i] + uy[i]*uy[i] + uz[i]*uz[i])*inv_clight_sq;
+                const Real inv_gamma = 1.0/std::sqrt(1.0 + usq);
+                vx_total += ux[i]*inv_gamma;
+                vy_total += uy[i]*inv_gamma;
+                vz_total += uz[i]*inv_gamma;
             }
         }
     }

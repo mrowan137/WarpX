@@ -100,13 +100,13 @@ void doDepositionShapeN(const Real * const xp, const Real * const yp, const Real
     ParallelFor( np_to_depose,
                  [=] AMREX_GPU_DEVICE (long ip) {
                      // --- Get particle quantities
-                     const Real gaminv = 1.0/std::sqrt(1.0 + uxp[ip]*uxp[ip]*clightsq
-						       + uyp[ip]*uyp[ip]*clightsq
-						       + uzp[ip]*uzp[ip]*clightsq);
+                     const Real inv_gamma = 1.0/std::sqrt(1.0 + uxp[ip]*uxp[ip]*clightsq
+                                                              + uyp[ip]*uyp[ip]*clightsq
+                                                              + uzp[ip]*uzp[ip]*clightsq);
                      const Real wq  = q*wp[ip];
-                     const Real vx  = uxp[ip]*gaminv;
-                     const Real vy  = uyp[ip]*gaminv;
-                     const Real vz  = uzp[ip]*gaminv;
+                     const Real vx  = uxp[ip]*inv_gamma;
+                     const Real vy  = uyp[ip]*inv_gamma;
+                     const Real vz  = uzp[ip]*inv_gamma;
                      // wqx, wqy wqz are particle current in each direction 
                      const Real wqx = wq*invvol*vx;
                      const Real wqy = wq*invvol*vy;
@@ -129,16 +129,16 @@ void doDepositionShapeN(const Real * const xp, const Real * const yp, const Real
                      // y direction
                      const Real ymid= (yp[ip]-ymin)*dyi-dts2dy*vy;
                      Real AMREX_RESTRICT sy [depos_order + 1];
-		     const int k  = compute_shape_factor<depos_order>(sy,  ymid);
+                     const int k  = compute_shape_factor<depos_order>(sy,  ymid);
                      Real AMREX_RESTRICT sy0[depos_order + 1];
-		     const int k0 = compute_shape_factor<depos_order>(sy0, ymid-stagger_shift);
+                     const int k0 = compute_shape_factor<depos_order>(sy0, ymid-stagger_shift);
 #endif
                      // z direction
                      const Real zmid= (zp[ip]-zmin)*dzi-dts2dz*vz;
                      Real AMREX_RESTRICT sz [depos_order + 1];
-		     const int l  = compute_shape_factor<depos_order>(sz,  zmid);
+                     const int l  = compute_shape_factor<depos_order>(sz,  zmid);
                      Real AMREX_RESTRICT sz0[depos_order + 1];
-		     const int l0 = compute_shape_factor<depos_order>(sz0, zmid-stagger_shift);
+                     const int l0 = compute_shape_factor<depos_order>(sz0, zmid-stagger_shift);
 
                      // Deposit current into jx_arr, jy_arr and jz_arr
 #if (AMREX_SPACEDIM == 2)

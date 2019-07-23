@@ -301,7 +301,6 @@ subroutine warpx_charge_deposition(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,n
   !> @param[in] np number of particles
   !> @param[in] xp,yp,zp particle position arrays
   !> @param[in] uxp,uyp,uzp particle momentum arrays
-  !> @param[in] gaminv inverve of the particle Lorentz factor (array)
   !> @param[in] w particle weight arrays
   !> @param[in] q particle species charge
   !> @param[in] xmin,ymin,zmin tile grid minimum position
@@ -314,7 +313,7 @@ subroutine warpx_charge_deposition(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,n
   !>
   subroutine warpx_current_deposition( &
     jx,jx_ng,jx_ntot,jy,jy_ng,jy_ntot,jz,jz_ng,jz_ntot, &
-    np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q,xmin,ymin,zmin,dt,dx,dy,dz,nox,noy,noz,&
+    np,xp,yp,zp,uxp,uyp,uzp,w,q,xmin,ymin,zmin,dt,dx,dy,dz,nox,noy,noz,&
     l_nodal,lvect,current_depo_algo) &
     bind(C, name="warpx_current_deposition")
 
@@ -330,10 +329,12 @@ subroutine warpx_charge_deposition(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,n
     real(amrex_real), intent(IN)                                     :: xmin,ymin,zmin
     real(amrex_real), intent(IN),  dimension(np)                     :: xp,yp,zp,w
     real(amrex_real), intent(IN),  dimension(np)                     :: uxp,uyp,uzp
-    real(amrex_real), intent(IN),  dimension(np)                     :: gaminv
     integer(c_long), intent(IN)                                   :: lvect
     integer(c_long), intent(IN)                                   :: current_depo_algo
     logical(pxr_logical)                                          :: pxr_l_nodal
+
+    real(amrex_real), allocatable :: inv_gamma(:)
+    real(amrex_real), parameter :: clight = 299792458._amrex_real
 
     ! Compute the number of valid cells and guard cells
     integer(c_long) :: jx_nvalid(AMREX_SPACEDIM), jy_nvalid(AMREX_SPACEDIM), jz_nvalid(AMREX_SPACEDIM), &
@@ -346,13 +347,16 @@ subroutine warpx_charge_deposition(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,n
     jz_nguards = jz_ng
     pxr_l_nodal = l_nodal .eq. 1
 
+    allocate(inv_gamma(np))
+    inv_gamma = 1./sqrt(1. + (uxp**2 + uyp**2 + uzp**2)/clight**2)
+
 ! Dimension 3
 #if (AMREX_SPACEDIM==3)
    CALL WRPX_PXR_CURRENT_DEPOSITION(        &
         jx,jx_nguards,jx_nvalid,            &
         jy,jy_nguards,jy_nvalid,            &
         jz,jz_nguards,jz_nvalid,            &
-        np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q, &
+        np,xp,yp,zp,uxp,uyp,uzp,inv_gamma,w,q, &
         xmin,ymin,zmin,dt,dx,dy,dz,         &
         nox,noy,noz,pxr_l_nodal,current_depo_algo)
 ! Dimension 2
@@ -361,10 +365,12 @@ subroutine warpx_charge_deposition(rho,np,xp,yp,zp,w,q,xmin,ymin,zmin,dx,dy,dz,n
         jx,jx_nguards,jx_nvalid,            &
         jy,jy_nguards,jy_nvalid,            &
         jz,jz_nguards,jz_nvalid,            &
-        np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,q, &
+        np,xp,yp,zp,uxp,uyp,uzp,inv_gamma,w,q, &
         xmin,zmin,dt,dx,dz,nox,noz,pxr_l_nodal, &
         lvect,current_depo_algo)
 #endif
+
+  deallocate(inv_gamma)
 
   end subroutine warpx_current_deposition
 

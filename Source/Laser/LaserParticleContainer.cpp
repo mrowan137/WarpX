@@ -440,8 +440,6 @@ LaserParticleContainer::Evolve (int lev,
             // For now, laser particles do not take the current buffers into account
             const long np_current = np;
 
-            m_giv[thread_num].resize(np);
-
             plane_Xp.resize(np);
             plane_Yp.resize(np);
             amplitude_E.resize(np);
@@ -494,7 +492,6 @@ LaserParticleContainer::Evolve (int lev,
                                   m_yp[thread_num].dataPtr(),
                                   m_zp[thread_num].dataPtr(),
                                   uxp.dataPtr(), uyp.dataPtr(), uzp.dataPtr(),
-                                  m_giv[thread_num].dataPtr(),
                                   wp.dataPtr(), amplitude_E.dataPtr(), &p_X[0], &p_X[1], &p_X[2],
                                   &nvec[0], &nvec[1], &nvec[2], &mobility, &dt,
                                   &PhysConst::c, &WarpX::beta_boost, &WarpX::gamma_boost );

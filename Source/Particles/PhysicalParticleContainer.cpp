@@ -1295,8 +1295,6 @@ PhysicalParticleContainer::Evolve (int lev,
             Byp.assign(np,WarpX::B_external[1]);
             Bzp.assign(np,WarpX::B_external[2]);
 
-            m_giv[thread_num].resize(np);
-
             long nfine_current = np;
             long nfine_gather = np;
             if (has_buffer && !do_not_push)
@@ -1528,8 +1526,7 @@ PhysicalParticleContainer::Evolve (int lev,
                 // Particle Push
                 //
                 BL_PROFILE_VAR_START(blp_pxr_pp);
-                PushPX(pti, m_xp[thread_num], m_yp[thread_num], m_zp[thread_num], 
-                       m_giv[thread_num], dt);
+                PushPX(pti, m_xp[thread_num], m_yp[thread_num], m_zp[thread_num], dt);
                 BL_PROFILE_VAR_STOP(blp_pxr_pp);
 
                 //
@@ -1744,7 +1741,6 @@ PhysicalParticleContainer::PushPX(WarpXParIter& pti,
                                   Cuda::ManagedDeviceVector<Real>& xp,
                                   Cuda::ManagedDeviceVector<Real>& yp,
                                   Cuda::ManagedDeviceVector<Real>& zp,
-                                  Cuda::ManagedDeviceVector<Real>& giv,
                                   Real dt)
 {
 
@@ -1754,7 +1750,6 @@ PhysicalParticleContainer::PushPX(WarpXParIter& pti,
     Real* const AMREX_RESTRICT x = xp.dataPtr();
     Real* const AMREX_RESTRICT y = yp.dataPtr();
     Real* const AMREX_RESTRICT z = zp.dataPtr();
-    Real* const AMREX_RESTRICT gi = giv.dataPtr();
     Real* const AMREX_RESTRICT ux = attribs[PIdx::ux].dataPtr();
     Real* const AMREX_RESTRICT uy = attribs[PIdx::uy].dataPtr();
     Real* const AMREX_RESTRICT uz = attribs[PIdx::uz].dataPtr();
@@ -1776,7 +1771,7 @@ PhysicalParticleContainer::PushPX(WarpXParIter& pti,
     if (WarpX::particle_pusher_algo == ParticlePusherAlgo::Boris){
         amrex::ParallelFor( pti.numParticles(),
             [=] AMREX_GPU_DEVICE (long i) {
-                UpdateMomentumBoris( ux[i], uy[i], uz[i], gi[i],
+                UpdateMomentumBoris( ux[i], uy[i], uz[i],
                       Ex[i], Ey[i], Ez[i], Bx[i], By[i], Bz[i], q, m, dt);
                 UpdatePosition( x[i], y[i], z[i],
                       ux[i], uy[i], uz[i], dt );
@@ -1785,7 +1780,7 @@ PhysicalParticleContainer::PushPX(WarpXParIter& pti,
     } else if (WarpX::particle_pusher_algo == ParticlePusherAlgo::Vay) {
         amrex::ParallelFor( pti.numParticles(),
             [=] AMREX_GPU_DEVICE (long i) {
-                UpdateMomentumVay( ux[i], uy[i], uz[i], gi[i],
+                UpdateMomentumVay( ux[i], uy[i], uz[i],
                       Ex[i], Ey[i], Ez[i], Bx[i], By[i], Bz[i], q, m, dt);
                 UpdatePosition( x[i], y[i], z[i],
                       ux[i], uy[i], uz[i], dt );
@@ -1846,8 +1841,6 @@ PhysicalParticleContainer::PushP (int lev, Real dt,
             Byp.assign(np,WarpX::B_external[1]);
             Bzp.assign(np,WarpX::B_external[2]);
 
-            m_giv[thread_num].resize(np);
-
             //
             // copy data from particle container to temp arrays
             //
@@ -1881,7 +1874,6 @@ PhysicalParticleContainer::PushP (int lev, Real dt,
 
             // This wraps the momentum advance so that inheritors can modify the call.
             // Extract pointers to the different particle quantities
-            Real* const AMREX_RESTRICT gi = m_giv[thread_num].dataPtr();
             Real* const AMREX_RESTRICT ux = attribs[PIdx::ux].dataPtr();
             Real* const AMREX_RESTRICT uy = attribs[PIdx::uy].dataPtr();
             Real* const AMREX_RESTRICT uz = attribs[PIdx::uz].dataPtr();
@@ -1898,14 +1890,14 @@ PhysicalParticleContainer::PushP (int lev, Real dt,
             if (WarpX::particle_pusher_algo == ParticlePusherAlgo::Boris){
                 amrex::ParallelFor( pti.numParticles(),
                     [=] AMREX_GPU_DEVICE (long i) {
-                        UpdateMomentumBoris( ux[i], uy[i], uz[i], gi[i],
+                        UpdateMomentumBoris( ux[i], uy[i], uz[i],
                               Expp[i], Eypp[i], Ezpp[i], Bxpp[i], Bypp[i], Bzpp[i], q, m, dt);
                     }
                 );
             } else if (WarpX::particle_pusher_algo == ParticlePusherAlgo::Vay) {
                 amrex::ParallelFor( pti.numParticles(),
                     [=] AMREX_GPU_DEVICE (long i) {
-                        UpdateMomentumVay( ux[i], uy[i], uz[i], gi[i],
+                        UpdateMomentumVay( ux[i], uy[i], uz[i],
                               Expp[i], Eypp[i], Ezpp[i], Bxpp[i], Bypp[i], Bzpp[i], q, m, dt);
                     }
                 );

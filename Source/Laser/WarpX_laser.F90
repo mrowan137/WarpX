@@ -242,33 +242,33 @@ contains
 #endif
 
   subroutine update_laser_particle( np, &
-    xp, yp, zp, uxp, uyp, uzp, giv, wp, amplitude_E, p_Xx, p_Xy, p_Xz, &
+    xp, yp, zp, uxp, uyp, uzp, wp, amplitude_E, p_Xx, p_Xy, p_Xz, &
     nvecx, nvecy, nvecz, mobility, dt, c, beta_boost, gamma_boost ) &
     bind(C, name="update_laser_particle")
 
     integer(c_long), intent(in) :: np
     real(amrex_real), intent(in) :: amplitude_E(np), wp(np)
     real(amrex_real), intent(inout) :: xp(np), yp(np), zp(np)
-    real(amrex_real), intent(out) :: uxp(np), uyp(np), uzp(np), giv(np)
+    real(amrex_real), intent(out) :: uxp(np), uyp(np), uzp(np)
     real(amrex_real), intent(in) :: p_Xx, p_Xy, p_Xz
     real(amrex_real), intent(in) :: nvecx, nvecy, nvecz
     real(amrex_real), intent(in) :: c, beta_boost, gamma_boost, mobility, dt
 
 #ifdef USE_ACC_LASER_SUBROUTINE
     call update_laser_particle_acc( np, &
-    xp, yp, zp, uxp, uyp, uzp, giv, wp, amplitude_E, p_Xx, p_Xy, p_Xz, &
+    xp, yp, zp, uxp, uyp, uzp, wp, amplitude_E, p_Xx, p_Xy, p_Xz, &
     nvecx, nvecy, nvecz, mobility, dt, c, beta_boost, gamma_boost )
 
   end subroutine update_laser_particle
 
   subroutine update_laser_particle_acc( np, &
-    xp, yp, zp, uxp, uyp, uzp, giv, wp, amplitude_E, p_Xx, p_Xy, p_Xz, &
+    xp, yp, zp, uxp, uyp, uzp, wp, amplitude_E, p_Xx, p_Xy, p_Xz, &
     nvecx, nvecy, nvecz, mobility, dt, c, beta_boost, gamma_boost )
 
     integer(c_long), intent(in) :: np
     real(amrex_real), intent(in) :: amplitude_E(np), wp(np)
     real(amrex_real), intent(inout) :: xp(np), yp(np), zp(np)
-    real(amrex_real), intent(out) :: uxp(np), uyp(np), uzp(np), giv(np)
+    real(amrex_real), intent(out) :: uxp(np), uyp(np), uzp(np)
     real(amrex_real), intent(in) :: p_Xx, p_Xy, p_Xz
     real(amrex_real), intent(in) :: nvecx, nvecy, nvecz
     real(amrex_real), intent(in) :: c, beta_boost, gamma_boost, mobility, dt
@@ -277,7 +277,7 @@ contains
     real(amrex_real)     :: vx, vy, vz, v_over_c, sign_charge, gamma
     integer  :: ip
 
-    !$acc parallel deviceptr(amplitude_E, wp, xp, yp, zp, uxp, uyp, uzp, giv)
+    !$acc parallel deviceptr(amplitude_E, wp, xp, yp, zp, uxp, uyp, uzp)
     !$acc loop
     do ip = 1, np
        ! Calculate the velocity according to the amplitude of E
@@ -295,7 +295,6 @@ contains
        endif
        ! Get the corresponding momenta
        gamma = gamma_boost/sqrt(1 - v_over_c*v_over_c)
-       giv(ip) = 1./gamma
        uxp(ip) = gamma * vx
        uyp(ip) = gamma * vy
        uzp(ip) = gamma * vz
