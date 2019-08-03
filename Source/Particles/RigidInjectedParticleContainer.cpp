@@ -251,9 +251,12 @@ RigidInjectedParticleContainer::PushPX(WarpXParIter& pti,
         // This only approximates what should be happening. The particles
         // should by advanced a fraction of a time step instead.
         // Scaling the fields is much easier and may be good enough.
+        const Real v_boost = WarpX::beta_boost*PhysConst::c;
+        const Real z_plane_previous = zinject_plane_lev_previous;
+        const Real vz_ave_boosted = vzbeam_ave_boosted;
         amrex::ParallelFor( pti.numParticles(),
             [=] AMREX_GPU_DEVICE (long i) {
-            const Real dtscale = dt - (zinject_plane_lev_previous - z[i])/(vzbeam_ave_boosted + WarpX::beta_boost*PhysConst::c);
+            const Real dtscale = dt - (z_plane_previous - z[i])/(vz_ave_boosted + v_boost);
             if (0. < dtscale && dtscale < dt) {
                 Exp[i] *= dtscale;
                 Eyp[i] *= dtscale;
@@ -269,11 +272,6 @@ RigidInjectedParticleContainer::PushPX(WarpXParIter& pti,
     PhysicalParticleContainer::PushPX(pti, xp, yp, zp, dt);
 
     if (!done_injecting_lev) {
-#ifdef _OPENMP
-        const int tid = omp_get_thread_num();
-#else
-        const int tid = 0;
-#endif
 
         Real* AMREX_RESTRICT x_save;
         Real* AMREX_RESTRICT y_save;
@@ -299,22 +297,25 @@ RigidInjectedParticleContainer::PushPX(WarpXParIter& pti,
 
         // Undo the push for particles not injected yet.
         // The zp are advanced a fixed amount.
+        const Real z_plane_lev = zinject_plane_lev;
+        const Real vz_ave_boosted = vzbeam_ave_boosted;
+        const bool rigid = rigid_advance;
+        const Real inv_csq = 1./(PhysConst::c*PhysConst::c);
         amrex::ParallelFor( pti.numParticles(),
             [=] AMREX_GPU_DEVICE (long i) {
-            if (z[i] <= zinject_plane_lev) {
+            if (z[i] <= z_plane_lev) {
                 ux[i] = ux_save[i];
                 uy[i] = uy_save[i];
                 uz[i] = uz_save[i];
                 x[i] = x_save[i];
                 y[i] = y_save[i];
-                if (rigid_advance) {
-                    z[i] = z_save[i] + dt*vzbeam_ave_boosted;
+                if (rigid) {
+                    z[i] = z_save[i] + dt*vz_ave_boosted;
                 }
                 else {
                     const Real inv_gamma = 1./std::sqrt(1. + (ux[i]*ux[i] + uy[i]*uy[i] + uz[i]*uz[i])/(PhysConst::c*PhysConst::c));
                     z[i] = z_save[i] + dt*uz[i]*inv_gamma;
                 }
-                done_injecting_temp[tid] = 0;
             }
         }
         );
@@ -338,13 +339,13 @@ RigidInjectedParticleContainer::Evolve (int lev,
     zinject_plane_levels[lev] -= dt*WarpX::beta_boost*PhysConst::c;
     zinject_plane_lev = zinject_plane_levels[lev];
 
-    // Setup check of whether more particles need to be injected
-#ifdef _OPENMP
-    const int nthreads = omp_get_max_threads();
-#else
-    const int nthreads = 1;
-#endif
-    done_injecting_temp.assign(nthreads, 1); // We do not use bool because vector<bool> is special.
+    // Set the done injecting flag whan the inject plane moves out of the
+    // simulation domain.
+    // It is much easier to do this check, rather than checking if all of the
+    // particles have crossed the inject plane.
+    const Real* plo = Geom(lev).ProbLo();
+    const Real* phi = Geom(lev).ProbHi();
+    done_injecting[lev] = (zinject_plane_levels[lev] < plo[2] || zinject_plane_levels[lev] > phi[2]);
     done_injecting_lev = done_injecting[lev];
 
     PhysicalParticleContainer::Evolve (lev,
@@ -356,10 +357,6 @@ RigidInjectedParticleContainer::Evolve (int lev,
                                        cEx, cEy, cEz,
                                        cBx, cBy, cBz,
                                        t, dt);
-
-    // Check if all done_injecting_temp are still true.
-    done_injecting[lev] = std::all_of(done_injecting_temp.begin(), done_injecting_temp.end(),
-                                      [](int i) -> bool { return i; });
 }
 
 void
@@ -453,19 +450,16 @@ RigidInjectedParticleContainer::PushP (int lev, Real dt,
 
             // This wraps the momentum advance so that inheritors can modify the call.
             // Extract pointers to the different particle quantities
-            const Real* AMREX_RESTRICT zp = m_zp[thread_num].dataPtr();
+            const Real* const AMREX_RESTRICT zp = m_zp[thread_num].dataPtr();
             Real* const AMREX_RESTRICT uxpp = uxp.dataPtr();
             Real* const AMREX_RESTRICT uypp = uyp.dataPtr();
             Real* const AMREX_RESTRICT uzpp = uzp.dataPtr();
-            const Real* AMREX_RESTRICT uxp_savep = uxp_save.dataPtr();
-            const Real* AMREX_RESTRICT uyp_savep = uyp_save.dataPtr();
-            const Real* AMREX_RESTRICT uzp_savep = uzp_save.dataPtr();
-            const Real* AMREX_RESTRICT Expp = Exp.dataPtr();
-            const Real* AMREX_RESTRICT Eypp = Eyp.dataPtr();
-            const Real* AMREX_RESTRICT Ezpp = Ezp.dataPtr();
-            const Real* AMREX_RESTRICT Bxpp = Bxp.dataPtr();
-            const Real* AMREX_RESTRICT Bypp = Byp.dataPtr();
-            const Real* AMREX_RESTRICT Bzpp = Bzp.dataPtr();
+            const Real* const AMREX_RESTRICT Expp = Exp.dataPtr();
+            const Real* const AMREX_RESTRICT Eypp = Eyp.dataPtr();
+            const Real* const AMREX_RESTRICT Ezpp = Ezp.dataPtr();
+            const Real* const AMREX_RESTRICT Bxpp = Bxp.dataPtr();
+            const Real* const AMREX_RESTRICT Bypp = Byp.dataPtr();
+            const Real* const AMREX_RESTRICT Bzpp = Bzp.dataPtr();
 
             // Loop over the particles and update their momentum
             const Real q = this->charge;
@@ -491,12 +485,16 @@ RigidInjectedParticleContainer::PushP (int lev, Real dt,
             // Undo the push for particles not injected yet.
             // It is assumed that PushP will only be called on the first and last steps
             // and that no particles will cross zinject_plane.
+            const Real* const AMREX_RESTRICT ux_save = uxp_save.dataPtr();
+            const Real* const AMREX_RESTRICT uy_save = uyp_save.dataPtr();
+            const Real* const AMREX_RESTRICT uz_save = uzp_save.dataPtr();
+            const Real zz = zinject_plane_levels[lev];
             amrex::ParallelFor( pti.numParticles(),
                 [=] AMREX_GPU_DEVICE (long i) {
-                if (zp[i] <= zinject_plane_levels[lev]) {
-                    uxpp[i] = uxp_save[i];
-                    uypp[i] = uyp_save[i];
-                    uzpp[i] = uzp_save[i];
+                if (zp[i] <= zz) {
+                    uxpp[i] = ux_save[i];
+                    uypp[i] = uy_save[i];
+                    uzpp[i] = uz_save[i];
                 }
             }
             );
