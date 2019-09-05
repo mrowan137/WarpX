@@ -393,8 +393,9 @@ LaserParticleContainer::Evolve (int lev,
                                 const MultiFab&, const MultiFab&, const MultiFab&,
                                 const MultiFab&, const MultiFab&, const MultiFab&,
                                 MultiFab& jx, MultiFab& jy, MultiFab& jz,
+                                MultiFab* jxcp, MultiFab* jycp, MultiFab* jzcp,
                                 MultiFab* cjx, MultiFab* cjy, MultiFab* cjz,
-                                MultiFab* rho, MultiFab* crho,
+                                MultiFab* rho, MultiFab* rhocp, MultiFab* crho,
                                 const MultiFab*, const MultiFab*, const MultiFab*,
                                 const MultiFab*, const MultiFab*, const MultiFab*,
                                 Real t, Real dt)
@@ -507,6 +508,11 @@ LaserParticleContainer::Evolve (int lev,
             DepositCurrent(pti, wp, uxp, uyp, uzp, ion_lev, &jx, &jy, &jz,
                            0, np_current, thread_num,
                            lev, lev, dt);
+            if (WarpX::deposit_on_coarse_patch and jxcp and jycp and jzcp) {
+                DepositCurrent(pti, wp, uxp, uyp, uzp, ion_lev, jxcp, jycp, jzcp,
+                               0, np_current, thread_num,
+                               lev, lev-1, dt);
+            }
             bool has_buffer = cjx;
             if (has_buffer){
                 // Deposit in buffers
@@ -526,6 +532,10 @@ LaserParticleContainer::Evolve (int lev,
                 int* AMREX_RESTRICT ion_lev = nullptr;
                 DepositCharge(pti, wp, ion_lev, rho, 1, 0,
                               np_current, thread_num, lev, lev);
+                if (WarpX::deposit_on_coarse_patch and rhocp) {
+                    DepositCharge(pti, wp, ion_lev, rhocp, 1, 0,
+                                  np_current, thread_num, lev, lev-1);
+                }
                 if (crho) {
                     DepositCharge(pti, wp, ion_lev, crho, 1, np_current,
                                   np-np_current, thread_num, lev, lev-1);

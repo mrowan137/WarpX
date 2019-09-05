@@ -47,6 +47,8 @@ int WarpX::maxwell_fdtd_solver_id;
 long WarpX::n_rz_azimuthal_modes = 1;
 long WarpX::ncomps = 1;
 
+bool WarpX::deposit_on_coarse_patch = false;
+
 long WarpX::nox = 1;
 long WarpX::noy = 1;
 long WarpX::noz = 1;
@@ -520,6 +522,7 @@ WarpX::ReadParameters ()
         // Only needs to be set with WARPX_DIM_RZ, otherwise defaults to 1.
         pp.query("n_rz_azimuthal_modes", n_rz_azimuthal_modes);
 
+        pp.query("deposit_on_coarse_patch", deposit_on_coarse_patch);
     }
 
     {

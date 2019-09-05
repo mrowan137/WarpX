@@ -938,8 +938,9 @@ PhysicalParticleContainer::Evolve (int lev,
                                    const MultiFab& Ex, const MultiFab& Ey, const MultiFab& Ez,
                                    const MultiFab& Bx, const MultiFab& By, const MultiFab& Bz,
                                    MultiFab& jx, MultiFab& jy, MultiFab& jz,
+                                   MultiFab* jxcp, MultiFab* jycp, MultiFab* jzcp,
                                    MultiFab* cjx, MultiFab* cjy, MultiFab* cjz,
-                                   MultiFab* rho, MultiFab* crho,
+                                   MultiFab* rho, MultiFab* rhocp, MultiFab* crho,
                                    const MultiFab* cEx, const MultiFab* cEy, const MultiFab* cEz,
                                    const MultiFab* cBx, const MultiFab* cBy, const MultiFab* cBz,
                                    Real t, Real dt)
@@ -1197,6 +1198,10 @@ PhysicalParticleContainer::Evolve (int lev,
                 }
                 DepositCharge(pti, wp, ion_lev, rho, 0, 0, 
                               np_current, thread_num, lev, lev);
+                if (WarpX::deposit_on_coarse_patch and rhocp) {
+                    DepositCharge(pti, wp, ion_lev, rhocp, 0, 0,
+                                  np_current, thread_num, lev, lev-1);
+                }
                 if (has_buffer){
                     DepositCharge(pti, wp, ion_lev, crho, 0, np_current,
                                   np-np_current, thread_num, lev, lev-1);
@@ -1318,6 +1323,11 @@ PhysicalParticleContainer::Evolve (int lev,
                 DepositCurrent(pti, wp, uxp, uyp, uzp, ion_lev, &jx, &jy, &jz,
                                0, np_current, thread_num,
                                lev, lev, dt);
+                if (WarpX::deposit_on_coarse_patch and jxcp and jycp and jzcp) {
+                    DepositCurrent(pti, wp, uxp, uyp, uzp, ion_lev, jxcp, jycp, jzcp,
+                                   0, np_current, thread_num,
+                                   lev, lev-1, dt);
+                }
                 if (has_buffer){
                     // Deposit in buffers
                     DepositCurrent(pti, wp, uxp, uyp, uzp, ion_lev, cjx, cjy, cjz,
@@ -1344,6 +1354,10 @@ PhysicalParticleContainer::Evolve (int lev,
                 }
                 DepositCharge(pti, wp, ion_lev, rho, 1, 0,
                               np_current, thread_num, lev, lev);
+                if (WarpX::deposit_on_coarse_patch and rhocp) {
+                    DepositCharge(pti, wp, ion_lev, rhocp, 1, 0,
+                                  np_current, thread_num, lev, lev-1);
+                }
                 if (has_buffer){
                     DepositCharge(pti, wp, ion_lev, crho, 1, np_current,
                                   np-np_current, thread_num, lev, lev-1);

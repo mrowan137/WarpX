@@ -28,8 +28,9 @@ public:
                          const amrex::MultiFab&, const amrex::MultiFab&, const amrex::MultiFab&,
                          const amrex::MultiFab&, const amrex::MultiFab&, const amrex::MultiFab&,
                          amrex::MultiFab& jx, amrex::MultiFab& jy, amrex::MultiFab& jz,
-                         amrex::MultiFab*, amrex::MultiFab*, amrex::MultiFab*,
-                         amrex::MultiFab* rho, amrex::MultiFab* crho,
+                         amrex::MultiFab* jxcp, amrex::MultiFab* jycp, amrex::MultiFab* jzcp,
+                         amrex::MultiFab* cjx, amrex::MultiFab* cjy, amrex::MultiFab* cjz,
+                         amrex::MultiFab* rho, amrex::MultiFab* rhocp, amrex::MultiFab* crho,
                          const amrex::MultiFab*, const amrex::MultiFab*, const amrex::MultiFab*,
                          const amrex::MultiFab*, const amrex::MultiFab*, const amrex::MultiFab*,
                          amrex::Real t, amrex::Real dt) final;

@@ -89,6 +89,9 @@ public:
     static long particle_pusher_algo;
     static int maxwell_fdtd_solver_id;
 
+    // Mesh refinement
+    static bool deposit_on_coarse_patch;
+
     // Interpolation order
     static long nox;
     static long noy;
