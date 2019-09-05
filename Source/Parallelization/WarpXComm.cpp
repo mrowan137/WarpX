@@ -365,23 +365,25 @@ WarpX::SyncCurrent ()
 {
     BL_PROFILE("SyncCurrent()");
 
-    // Restrict fine patch current onto the coarse patch, before
-    // summing the guard cells of the fine patch
-    for (int lev = 1; lev <= finest_level; ++lev)
-    {
-        current_cp[lev][0]->setVal(0.0);
-        current_cp[lev][1]->setVal(0.0);
-        current_cp[lev][2]->setVal(0.0);
+    if (!WarpX::deposit_on_coarse_patch) {
+        // Restrict fine patch current onto the coarse patch, before
+        // summing the guard cells of the fine patch
+        for (int lev = 1; lev <= finest_level; ++lev)
+        {
+            current_cp[lev][0]->setVal(0.0);
+            current_cp[lev][1]->setVal(0.0);
+            current_cp[lev][2]->setVal(0.0);
 
-        const IntVect& refinement_ratio = refRatio(lev-1);
+            const IntVect& refinement_ratio = refRatio(lev-1);
 
-        std::array<const MultiFab*,3> fine { current_fp[lev][0].get(),
-                                             current_fp[lev][1].get(),
-                                             current_fp[lev][2].get() };
-        std::array<      MultiFab*,3> crse { current_cp[lev][0].get(),
-                                             current_cp[lev][1].get(),
-                                             current_cp[lev][2].get() };
-        SyncCurrent(fine, crse, refinement_ratio[0]);
+            std::array<const MultiFab*,3> fine { current_fp[lev][0].get(),
+                                                 current_fp[lev][1].get(),
+                                                 current_fp[lev][2].get() };
+            std::array<      MultiFab*,3> crse { current_cp[lev][0].get(),
+                                                 current_cp[lev][1].get(),
+                                                 current_cp[lev][2].get() };
+            SyncCurrent(fine, crse, refinement_ratio[0]);
+        }
     }
 
     // For each level
@@ -434,13 +436,15 @@ WarpX::SyncRho ()
     if (!rho_fp[0]) return;
     const int ncomp = rho_fp[0]->nComp();
 
-    // Restrict fine patch onto the coarse patch,
-    // before summing the guard cells of the fine patch
-    for (int lev = 1; lev <= finest_level; ++lev)
-    {
-        rho_cp[lev]->setVal(0.0);
-        const IntVect& refinement_ratio = refRatio(lev-1);
-        SyncRho(*rho_fp[lev], *rho_cp[lev], refinement_ratio[0]);
+    if (WarpX::deposit_on_coarse_patch) {
+        // Restrict fine patch onto the coarse patch,
+        // before summing the guard cells of the fine patch
+        for (int lev = 1; lev <= finest_level; ++lev)
+        {
+            rho_cp[lev]->setVal(0.0);
+            const IntVect& refinement_ratio = refRatio(lev-1);
+            SyncRho(*rho_fp[lev], *rho_cp[lev], refinement_ratio[0]);
+        }
     }
 
     // For each level
@@ -489,6 +493,8 @@ WarpX::SyncRho (const MultiFab& fine, MultiFab& crse, int refinement_ratio)
 void
 WarpX::RestrictCurrentFromFineToCoarsePatch (int lev)
 {
+    if (WarpX::deposit_on_coarse_patch) return;
+
     current_cp[lev][0]->setVal(0.0);
     current_cp[lev][1]->setVal(0.0);
     current_cp[lev][2]->setVal(0.0);
@@ -607,6 +613,8 @@ WarpX::AddCurrentFromFineLevelandSumBoundary (int lev)
 void
 WarpX::RestrictRhoFromFineToCoarsePatch (int lev)
 {
+    if (WarpX::deposit_on_coarse_patch) return;
+
     if (rho_fp[lev]) {
         rho_cp[lev]->setVal(0.0);
         const IntVect& refinement_ratio = refRatio(lev-1);
