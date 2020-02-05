@@ -1145,6 +1145,9 @@ PhysicalParticleContainer::Evolve (int lev,
     BL_PROFILE_VAR_NS("PPC::FieldGather", blp_fg);
     BL_PROFILE_VAR_NS("PPC::EvolveOpticalDepth", blp_ppc_qed_ev);
     BL_PROFILE_VAR_NS("PPC::ParticlePush", blp_ppc_pp);
+#ifdef AMREX_USE_CUPTI
+    BL_PROFILE_VAR_NS_CUPTI("GPU::PPC::ParticlePush", blp_gpu_ppc_pp); // USER_MICHAEL
+#endif
 
     const std::array<Real,3>& dx = WarpX::CellSize(lev);
     const std::array<Real,3>& cdx = WarpX::CellSize(std::max(lev-1,0));
@@ -1340,9 +1343,39 @@ PhysicalParticleContainer::Evolve (int lev,
                 // Particle Push
                 //
                 BL_PROFILE_VAR_START(blp_ppc_pp);
+#ifdef AMREX_USE_CUPTI
+		BL_PROFILE_VAR_START_CUPTI(blp_gpu_ppc_pp); // USER_MICHAEL
+#endif
                 PushPX(pti, m_xp[thread_num], m_yp[thread_num], m_zp[thread_num], dt, a_dt_type);
+#ifdef AMREX_USE_CUPTI
+		BL_PROFILE_VAR_STOP_CUPTI(blp_gpu_ppc_pp); // USER_MICHAEL
+#endif
                 BL_PROFILE_VAR_STOP(blp_ppc_pp);
 
+		// Update costs, before it is too late!
+		// USER_MICHAEL
+		// Update cost here with GPU times
+#ifdef AMREX_USE_CUPTI
+		if (true) {
+		  if (cost) {
+		    Real wtCUPTI;
+		    const Box& tbx = pti.tilebox();
+		    //wt = 1e15*(amrex::second() - wt) / tbx.d_numPts();
+		    wtCUPTI = 1*computeElapsedTimeUserdata(activityRecordUserdata) / tbx.d_numPts();
+		    //amrex::AllPrint() << "Setting costs"
+		    //		      << "; wt:        " << wt
+		    //		      << "; Act. Size: " << activityRecordUserdata.size()
+		    //		      << "; Proc.:     " << ParallelContext::MyProcSub()
+		    //		      << "\n";
+		    Array4<Real> const& costarr = cost->array(pti);
+		    amrex::ParallelFor(tbx,
+				       [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+				       {
+					 costarr(i,j,k) += wtCUPTI;
+				       });
+		  }
+		}
+#endif // AMREX_USE_CUPTI
                 //
                 // Current Deposition
                 //
@@ -1356,8 +1389,9 @@ PhysicalParticleContainer::Evolve (int lev,
 
                 // Deposit inside domains
                 DepositCurrent(pti, wp, uxp, uyp, uzp, ion_lev, &jx, &jy, &jz,
-                               0, np_current, thread_num,
-                               lev, lev, dt);
+		             0, np_current, thread_num,
+		             lev, lev, dt);
+
                 if (has_buffer){
                     // Deposit in buffers
                     DepositCurrent(pti, wp, uxp, uyp, uzp, ion_lev, cjx, cjy, cjz,
@@ -1372,8 +1406,9 @@ PhysicalParticleContainer::Evolve (int lev,
                 BL_PROFILE_VAR_START(blp_copy);
                 pti.SetPosition(m_xp[thread_num], m_yp[thread_num], m_zp[thread_num]);
                 BL_PROFILE_VAR_STOP(blp_copy);
-            }
 
+            }
+		
             if (rho) {
                 // Deposit charge after particle push, in component 1 of MultiFab rho.
                 int* AMREX_RESTRICT ion_lev;
@@ -1390,16 +1425,19 @@ PhysicalParticleContainer::Evolve (int lev,
                 }
             }
 
-            if (cost) {
+	    // USER_MICHAEL
+	    if (true) {
+	      if (cost) {
                 const Box& tbx = pti.tilebox();
                 wt = (amrex::second() - wt) / tbx.d_numPts();
                 Array4<Real> const& costarr = cost->array(pti);
                 amrex::ParallelFor(tbx,
                                    [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                                    {
-                                       costarr(i,j,k) += wt;
+				     costarr(i,j,k) += wt;
                                    });
-            }
+	      }
+	    }
         }
     }
     // Split particles at the end of the timestep.

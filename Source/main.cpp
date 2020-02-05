@@ -32,6 +32,10 @@ int main(int argc, char* argv[])
 
     amrex::Initialize(argc,argv);
 
+#ifdef AMREX_USE_CUPTI
+    amrex::initCuptiTrace(); // USER_MICHAEL
+#endif
+    
     ConvertLabParamsToBoost();
 
     BL_PROFILE_VAR("main()", pmain);

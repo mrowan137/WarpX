@@ -11,17 +11,18 @@ DIM = 3
 #QED	       = TRUE
 #QED_TABLE_GEN = TRUE
 
-COMP = gcc
+#COMP = gcc
 #COMP = intel
-#COMP = pgi
+COMP = pgi
 
 TINY_PROFILE   = TRUE
+USE_CUPTI      = TRUE
 #PROFILE       = TRUE
 #COMM_PROFILE  = TRUE
 #TRACE_PROFILE = TRUE
 
-USE_OMP   = TRUE
-USE_GPU   = FALSE
+USE_OMP   = FALSE
+USE_GPU   = TRUE
 
 EBASE     = main
 
