@@ -25,20 +25,20 @@ WarpX::LoadBalance ()
         const Real nboxes = costs[lev]->size();
         const Real nprocs = ParallelDescriptor::NProcs();
         const int nmax = static_cast<int>(std::ceil(nboxes/nprocs*load_balance_knapsack_factor));
-	Real beg_dm = amrex::second();
+    Real beg_dm = amrex::second();
         const DistributionMapping newdm = (load_balance_with_sfc)
             ? DistributionMapping::makeSFC(*costs[lev], false)
             : DistributionMapping::makeKnapSack(*costs[lev], nmax);
-	Real end_dm = amrex::second();
+    Real end_dm = amrex::second();
 
-	Real beg_rl = amrex::second();
+    Real beg_rl = amrex::second();
         RemakeLevel(lev, t_new[lev], boxArray(lev), newdm);
-	Real end_rl = amrex::second();
+    Real end_rl = amrex::second();
 
-	amrex::Print() << "lev = " << lev
-		       << ", DistributionMapping = " << (end_dm - beg_dm)
-		       << ", RemakeLevel = "         << (end_rl - beg_rl)
-		       << '\n';
+    amrex::Print() << "lev = " << lev
+               << ", DistributionMapping = " << (end_dm - beg_dm)
+               << ", RemakeLevel = "         << (end_rl - beg_rl)
+               << '\n';
     }
 
     mypc->Redistribute();
