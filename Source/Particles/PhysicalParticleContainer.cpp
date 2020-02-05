@@ -1408,7 +1408,7 @@ PhysicalParticleContainer::Evolve (int lev,
                 BL_PROFILE_VAR_STOP(blp_copy);
 
             }
-        
+
             if (rho) {
                 // Deposit charge after particle push, in component 1 of MultiFab rho.
                 int* AMREX_RESTRICT ion_lev;

@@ -279,7 +279,7 @@ WarpXParticleContainer::DepositCurrent(WarpXParIter& pti,
                                        int thread_num, int lev, int depos_lev,
                                        Real dt)
 {
-  
+
     AMREX_ALWAYS_ASSERT_WITH_MESSAGE((depos_lev==(lev-1)) ||
                                      (depos_lev==(lev  )),
                                      "Deposition buffers only work for lev-1");
@@ -356,7 +356,7 @@ WarpXParticleContainer::DepositCurrent(WarpXParIter& pti,
 
     // Lower corner of tile box physical domain
     // Note that this includes guard cells since it is after tilebox.ngrow
-    
+
     // xyzmin is built on pti.tilebox(), so it does
     // not include staggering, so the stagger_shift has to be done by hand.
     // Alternatively, we could define xyzminx from tbx (and the same for 3
@@ -366,7 +366,7 @@ WarpXParticleContainer::DepositCurrent(WarpXParIter& pti,
     const Dim3 lo = lbound(tilebox);
     const std::array<Real, 3>& xyzmin = WarpX::LowerCorner(tilebox, depos_lev);
 
-  
+
 
     BL_PROFILE_VAR_START(blp_deposit);
     if (WarpX::current_deposition_algo == CurrentDepositionAlgo::Esirkepov) {
