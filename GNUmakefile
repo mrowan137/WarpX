@@ -11,9 +11,9 @@ DIM = 3
 #QED	       = TRUE
 #QED_TABLE_GEN = TRUE
 
-#COMP = gcc
+COMP = gcc
 #COMP = intel
-COMP = pgi
+#COMP = pgi
 
 TINY_PROFILE   = TRUE
 USE_CUPTI      = TRUE
