@@ -25,6 +25,8 @@ WarpX::LoadBalance ()
         const Real nboxes = costs[lev]->size();
         const Real nprocs = ParallelDescriptor::NProcs();
         const int nmax = static_cast<int>(std::ceil(nboxes/nprocs*load_balance_knapsack_factor));
+	// MPI barrier ?
+	//ParallelDescriptor::Barrier();
     Real beg_dm = amrex::second();
         const DistributionMapping newdm = (load_balance_with_sfc)
             ? DistributionMapping::makeSFC(*costs[lev], false)
