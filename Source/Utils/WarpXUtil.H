@@ -128,4 +128,17 @@ T trilinear_interp(T x0, T x1,T y0, T y1, T z0, T z1,
 */
 WarpXParser makeParser (std::string const& parse_function, std::vector<std::string> const& varnames);
 
+namespace {
+// Map with default value (for not-present key)
+template <typename KeyType, typename ValType>
+static ValType MapGetWithDefault(const std::map <KeyType,ValType>& map,
+                                 const KeyType& key,
+                                 const ValType& defaultVal )
+{
+    auto kv = map.find(key);
+    return (kv==map.end()?defaultVal:kv->second);
+}
+
+}
+
 #endif //WARPX_UTILS_H_

@@ -38,6 +38,7 @@
 #include <AMReX_Interpolater.H>
 #include <AMReX_FillPatchUtil.H>
 #include <WarpXParserWrapper.H>
+#include <WarpXUtil.H>
 
 #include "GuardCellManager.H"
 
@@ -204,10 +205,21 @@ public:
         }
     }
 
+    static amrex::MultiFab* getCostsHeuristic (int lev) {
+        if (m_instance) {
+            return m_instance->costs_heuristic[lev].get();
+        } else {
+            return nullptr;
+        }
+    }
+
     static amrex::IntVect filter_npass_each_dir;
     BilinearFilter bilinear_filter;
     amrex::Vector< std::unique_ptr<NCIGodfreyFilter> > nci_godfrey_filter_exeybz;
     amrex::Vector< std::unique_ptr<NCIGodfreyFilter> > nci_godfrey_filter_bxbyez;
+
+    amrex::Real time_of_last_gal_shift  = 0;
+    amrex::Array<amrex::Real,3> v_galilean = {{0}};
 
     static int num_mirrors;
     amrex::Vector<amrex::Real> mirror_z;
@@ -223,10 +235,15 @@ public:
     // Compute max_step automatically for simulations in a boosted frame.
     void computeMaxStepBoostAccelerator(const amrex::Geometry& geom);
     int  MoveWindow (bool move_j);
+
+    /**
+     * \brief
+     * This function shifts the boundary of the grid by 'v_galilean*dt'.
+     * In doding so, only positions attributes are changed while fields remain unchanged.
+     */
+    void ShiftGalileanBoundary ();
     void UpdatePlasmaInjectionPosition (amrex::Real dt);
-
     void ResetProbDomain (const amrex::RealBox& rb);
-
     void EvolveE (         amrex::Real dt);
     void EvolveE (int lev, amrex::Real dt);
     void EvolveB (         amrex::Real dt);
@@ -255,7 +272,13 @@ public:
      */
     void Hybrid_QED_Push (int lev, PatchType patch_type, amrex::Real dt);
 
-    static amrex::Real quantum_xi;
+    static amrex::Real quantum_xi_c2;
+
+
+    // Load balance options
+    enum LBType { UNDEFINED = -1, DEFAULT, HEURISTIC };
+    void LoadBalance (LBType load_balance_type = DEFAULT);
+
 
 #ifdef WARPX_DIM_RZ
     void ApplyInverseVolumeScalingToCurrentDensity(amrex::MultiFab* Jx,
@@ -332,11 +355,9 @@ public:
 
     static std::array<amrex::Real,3> CellSize (int lev);
     static amrex::RealBox getRealBox(const amrex::Box& bx, int lev);
-    static std::array<amrex::Real,3> LowerCorner (const amrex::Box& bx, int lev);
+    static std::array<amrex::Real,3> LowerCorner (const amrex::Box& bx,
+                                                  std::array<amrex::Real,3> galilean_shift, int lev);
     static std::array<amrex::Real,3> UpperCorner (const amrex::Box& bx, int lev);
-    // Returns the locations of the lower corner of the box, shifted up
-    // a half cell if cell centered.
-    static std::array<amrex::Real,3> LowerCornerWithCentering (const amrex::Box& bx, int lev);
 
     static amrex::IntVect RefRatio (int lev);
 
@@ -389,7 +410,8 @@ public:
     const amrex::IntVect getngE() const { return guard_cells.ng_alloc_EB; };
     const amrex::IntVect getngF() const { return guard_cells.ng_alloc_F; };
 
-    void InitSpaceChargeField (WarpXParticleContainer& pc);
+    void ComputeSpaceChargeField (bool const reset_fields);
+    void AddSpaceChargeField (WarpXParticleContainer& pc);
     void computePhi (const amrex::Vector<std::unique_ptr<amrex::MultiFab> >& rho,
                      amrex::Vector<std::unique_ptr<amrex::MultiFab> >& phi,
                      std::array<amrex::Real, 3> const beta = {{0,0,0}},
@@ -415,6 +437,10 @@ public:
          ParserWrapper<3> *zfield_parser, amrex::IntVect x_nodal_flag,
          amrex::IntVect y_nodal_flag, amrex::IntVect z_nodal_flag,
          const int lev);
+
+    // Function to add prtl and cell contributions to costs_heuristic
+    void ComputeCostsHeuristic (int lev);
+    amrex::Real sumMultiFabOverLevs (const amrex::Vector<std::unique_ptr<amrex::MultiFab> >& VectorOfMultifabs);
 
 protected:
 
@@ -558,8 +584,6 @@ private:
     void ExchangeWithPmlE (int lev);
     void ExchangeWithPmlF (int lev);
 
-    void LoadBalance ();
-
     void BuildBufferMasks ();
     void BuildBufferMasksInBox ( const amrex::Box tbx, amrex::IArrayBox &buffer_mask,
                                  const amrex::IArrayBox &guard_mask, const int ng );
@@ -646,10 +670,21 @@ private:
     int n_buffer = 4;
     amrex::Real const_dt = 0.5e-11;
 
+    // Load balancing
     int load_balance_int = -1;
     amrex::Vector<std::unique_ptr<amrex::MultiFab> > costs;
+    amrex::Vector<std::unique_ptr<amrex::MultiFab> > costs_heuristic;
     int load_balance_with_sfc = 0;
     amrex::Real load_balance_knapsack_factor = 1.24;
+
+    const std::map<std::string, LBType> load_balance_type_str_to_load_balance_type = {
+        {"default",   LBType::DEFAULT},
+        {"heuristic", LBType::HEURISTIC}
+    };
+    std::string load_balance_type_str = "default";
+    LBType load_balance_type = DEFAULT;
+    amrex::Real costs_heuristic_cell_wt = 0.1;
+    amrex::Real costs_heuristic_prtl_wt = 0.9;
 
     // Override sync every ? steps
     int override_sync_int = 1;
@@ -787,6 +822,5 @@ private:
     std::string insitu_config;
     int insitu_pin_mesh;
 };
-
 
 #endif

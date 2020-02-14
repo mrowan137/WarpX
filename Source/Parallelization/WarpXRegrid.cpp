@@ -11,27 +11,47 @@
 
 using namespace amrex;
 
+std::unique_ptr< Vector<std::unique_ptr<amrex::MultiFab> > > m_costs;
+
 void
-WarpX::LoadBalance ()
+WarpX::LoadBalance (WarpX::LBType load_balance_type/*=DEFAULT*/)
 {
     BL_PROFILE_REGION("LoadBalance");
     BL_PROFILE("WarpX::LoadBalance()");
 
-    AMREX_ALWAYS_ASSERT(costs[0] != nullptr);
+    switch (load_balance_type)
+    {
+    case DEFAULT:
+        m_costs.reset(&costs);
+        break;
+    case HEURISTIC:
+        for (int lev = 0; lev <= finest_level; ++lev)
+        {
+            WarpX::ComputeCostsHeuristic(lev);
+        }
+        m_costs.reset(&costs_heuristic);
+        break;
+    default:
+        amrex::Error("Bad WarpX::LBType;  check warpx.load_balance_type in input file?");
+    }
+
+    AMREX_ALWAYS_ASSERT((*m_costs)[0] != nullptr);
 
     const int nLevels = finestLevel();
     for (int lev = 0; lev <= nLevels; ++lev)
     {
-        const Real nboxes = costs[lev]->size();
+        const Real nboxes = (*m_costs)[lev]->size();
         const Real nprocs = ParallelDescriptor::NProcs();
         const int nmax = static_cast<int>(std::ceil(nboxes/nprocs*load_balance_knapsack_factor));
         const DistributionMapping newdm = (load_balance_with_sfc)
-            ? DistributionMapping::makeSFC(*costs[lev], false)
-            : DistributionMapping::makeKnapSack(*costs[lev], nmax);
+            ? DistributionMapping::makeSFC(*(*m_costs)[lev], false)
+            : DistributionMapping::makeKnapSack(*(*m_costs)[lev], nmax);
         RemakeLevel(lev, t_new[lev], boxArray(lev), newdm);
     }
 
     mypc->Redistribute();
+
+    m_costs.release();
 }
 
 void
@@ -228,10 +248,112 @@ WarpX::RemakeLevel (int lev, Real time, const BoxArray& ba, const DistributionMa
             costs[lev]->setVal(0.0);
         }
 
+    if (costs_heuristic[lev] != nullptr) {
+            costs_heuristic[lev].reset(new MultiFab(costs_heuristic[lev]->boxArray(), dm, 1, 0));
+            costs_heuristic[lev]->setVal(0.0);
+        }
+
         SetDistributionMap(lev, dm);
     }
     else
     {
         amrex::Abort("RemakeLevel: to be implemented");
     }
+}
+
+void
+WarpX::ComputeCostsHeuristic (int lev)
+{
+    MultiFab* cost = WarpX::getCostsHeuristic(lev);
+    auto & mypc = WarpX::GetInstance().GetPartContainer();
+    auto nSpecies = mypc.nSpecies();
+    const IntVect& ng = current_fp[lev][0]->nGrowVect();
+
+    // Species loop
+    for (int i_s = 0; i_s < nSpecies; ++i_s)
+    {
+        auto & myspc = mypc.GetParticleContainer(i_s);
+
+        // Particle loop
+        for (WarpXParIter pti(myspc, lev); pti.isValid(); ++pti)
+        {
+            if (cost)
+            {
+                const Box& tbx = pti.tilebox();
+                const long np = pti.numParticles();
+                Real wt = (costs_heuristic_prtl_wt*(1.0*np)/tbx.d_numPts()); // prtl wt per (work) cell
+                Array4<Real> const& costarr = cost->array(pti);
+                amrex::ParallelFor(
+                                   tbx,
+                                   [=] AMREX_GPU_DEVICE (int i, int j, int k)
+                                   {
+                                       costarr(i,j,k) += wt;
+                                   }
+                                  );
+            }
+        }
+    }
+
+    // Cell loop
+    for (MFIter mfi(*cost); mfi.isValid(); ++mfi)
+    {
+        if (cost) {
+        const Box& tbx = mfi.tilebox();
+    const Box& grown_tbx = mfi.growntilebox(ng);
+    int tbx_size = 1;
+    int grown_tbx_size = 1;
+
+    // Compute n_cells for each box
+    for (auto el : tbx.size())
+    {
+        tbx_size *= el;
+    }
+
+    for (auto el : grown_tbx.size())
+    {
+        grown_tbx_size *= el;
+    }
+
+        Real wt = (costs_heuristic_cell_wt*1.0*grown_tbx_size/tbx_size); // cell wt per (work) cell
+        Array4<Real> const& costarr = cost->array(mfi);
+        amrex::ParallelFor(
+                           tbx,
+                           [=] AMREX_GPU_DEVICE (int i, int j, int k)
+                           {
+                               costarr(i,j,k) += wt;
+                           }
+                          );
+        }
+    }
+}
+
+amrex::Real
+WarpX::sumMultiFabOverLevs (const amrex::Vector<std::unique_ptr<amrex::MultiFab> >& VectorOfMultifabs)
+{
+    // Sum (over physical region of) MultiFab values over all levels
+    // Can be used, e.g., to check the sum over levels of 'costs' or 'costs_heuristic'
+    amrex::Real total = 0.0;
+
+    const int nLevels = finestLevel();
+    for (int lev = 0; lev <= nLevels; ++lev)
+    {
+        MultiFab* mf = VectorOfMultifabs[lev].get();
+        for (MFIter mfi(*mf); mfi.isValid(); ++mfi)
+        {
+            const Box& bx = mfi.tilebox();
+            const auto lo = amrex::lbound(bx);
+            const auto hi = amrex::ubound(bx);
+            Array4<Real> const& mfArray = (&mf)[lev]->array(mfi);
+            for (int k = lo.z; k <= hi.z; ++k) {
+                for (int j = lo.y; j <= hi.y; ++j) {
+                    for (int i = lo.x; i <= hi.x; ++i) {
+                        total += mfArray(i, j, k);
+                    }
+                }
+            }
+        }
+    }
+
+    ParallelDescriptor::ReduceRealSum(total);
+    return total;
 }
