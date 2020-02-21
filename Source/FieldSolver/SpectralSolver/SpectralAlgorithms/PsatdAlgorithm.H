@@ -34,7 +34,7 @@ class PsatdAlgorithm : public SpectralBaseAlgorithm
                                     const amrex::Real dt);
 
     private:
-        SpectralCoefficients C_coef, S_ck_coef, X1_coef, X2_coef, X3_coef;
+        SpectralRealCoefficients C_coef, S_ck_coef, X1_coef, X2_coef, X3_coef;
 };
 
 #endif // WARPX_PSATD_ALGORITHM_H_

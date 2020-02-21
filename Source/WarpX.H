@@ -20,6 +20,7 @@
 #include <NCIGodfreyFilter.H>
 #include "MultiReducedDiags.H"
 
+#include <FiniteDifferenceSolver.H>
 #ifdef WARPX_USE_PSATD
 #   include <SpectralSolver.H>
 #endif
@@ -91,7 +92,7 @@ public:
     static void shiftMF (amrex::MultiFab& mf, const amrex::Geometry& geom,
                          int num_shift, int dir, amrex::IntVect ng_extra,
                          amrex::Real external_field=0.0, bool useparser = false,
-                         ParserWrapper *field_parser=nullptr);
+                         ParserWrapper<3> *field_parser=nullptr);
 
     static void GotoNextLine (std::istream& is);
 
@@ -116,13 +117,13 @@ public:
     static std::string str_Ez_ext_grid_function;
 
     // ParserWrapper for B_external on the grid
-    std::unique_ptr<ParserWrapper> Bxfield_parser;
-    std::unique_ptr<ParserWrapper> Byfield_parser;
-    std::unique_ptr<ParserWrapper> Bzfield_parser;
+    std::unique_ptr<ParserWrapper<3> > Bxfield_parser;
+    std::unique_ptr<ParserWrapper<3> > Byfield_parser;
+    std::unique_ptr<ParserWrapper<3> > Bzfield_parser;
     // ParserWrapper for E_external on the grid
-    std::unique_ptr<ParserWrapper> Exfield_parser;
-    std::unique_ptr<ParserWrapper> Eyfield_parser;
-    std::unique_ptr<ParserWrapper> Ezfield_parser;
+    std::unique_ptr<ParserWrapper<3> > Exfield_parser;
+    std::unique_ptr<ParserWrapper<3> > Eyfield_parser;
+    std::unique_ptr<ParserWrapper<3> > Ezfield_parser;
 
     // Algorithms
     static long current_deposition_algo;
@@ -171,7 +172,7 @@ public:
 
     static int do_subcycling;
 
-    static bool exchange_all_guard_cells;
+    static bool safe_guard_cells;
 
     // buffers
     static int n_field_gather_buffer;       //! in number of cells from the edge (identical for each dimension)
@@ -208,6 +209,9 @@ public:
     amrex::Vector< std::unique_ptr<NCIGodfreyFilter> > nci_godfrey_filter_exeybz;
     amrex::Vector< std::unique_ptr<NCIGodfreyFilter> > nci_godfrey_filter_bxbyez;
 
+    amrex::Real time_of_last_gal_shift  = 0;
+    amrex::Array<amrex::Real,3> v_galilean = {{0}};
+
     static int num_mirrors;
     amrex::Vector<amrex::Real> mirror_z;
     amrex::Vector<amrex::Real> mirror_z_width;
@@ -222,10 +226,15 @@ public:
     // Compute max_step automatically for simulations in a boosted frame.
     void computeMaxStepBoostAccelerator(const amrex::Geometry& geom);
     int  MoveWindow (bool move_j);
+
+    /**
+     * \brief
+     * This function shifts the boundary of the grid by 'v_galilean*dt'.
+     * In doding so, only positions attributes are changed while fields remain unchanged.
+     */
+    void ShiftGalileanBoundary ();
     void UpdatePlasmaInjectionPosition (amrex::Real dt);
-
     void ResetProbDomain (const amrex::RealBox& rb);
-
     void EvolveE (         amrex::Real dt);
     void EvolveE (int lev, amrex::Real dt);
     void EvolveB (         amrex::Real dt);
@@ -235,6 +244,26 @@ public:
     void EvolveB (int lev, PatchType patch_type, amrex::Real dt);
     void EvolveE (int lev, PatchType patch_type, amrex::Real dt);
     void EvolveF (int lev, PatchType patch_type, amrex::Real dt, DtType dt_type);
+
+    /** \brief apply QED correction on electric field
+     * \param dt vector of time steps (for all levels)
+     */
+    void Hybrid_QED_Push (         amrex::Vector<amrex::Real> dt);
+
+    /** \brief apply QED correction on electric field for level lev
+     * \param lev mesh refinement level
+     * \param dt time step
+     */
+    void Hybrid_QED_Push (int lev, amrex::Real dt);
+
+    /** \brief apply QED correction on electric field for level lev and patch type patch_type
+     * \param lev mesh refinement level
+     * \param dt patch_type which MR patch: PatchType::fine or PatchType::coarse
+     * \param dt time step
+     */
+    void Hybrid_QED_Push (int lev, PatchType patch_type, amrex::Real dt);
+
+    static amrex::Real quantum_xi_c2;
 
 #ifdef WARPX_DIM_RZ
     void ApplyInverseVolumeScalingToCurrentDensity(amrex::MultiFab* Jx,
@@ -311,11 +340,9 @@ public:
 
     static std::array<amrex::Real,3> CellSize (int lev);
     static amrex::RealBox getRealBox(const amrex::Box& bx, int lev);
-    static std::array<amrex::Real,3> LowerCorner (const amrex::Box& bx, int lev);
+    static std::array<amrex::Real,3> LowerCorner (const amrex::Box& bx,
+                                                  std::array<amrex::Real,3> galilean_shift, int lev);
     static std::array<amrex::Real,3> UpperCorner (const amrex::Box& bx, int lev);
-    // Returns the locations of the lower corner of the box, shifted up
-    // a half cell if cell centered.
-    static std::array<amrex::Real,3> LowerCornerWithCentering (const amrex::Box& bx, int lev);
 
     static amrex::IntVect RefRatio (int lev);
 
@@ -368,7 +395,8 @@ public:
     const amrex::IntVect getngE() const { return guard_cells.ng_alloc_EB; };
     const amrex::IntVect getngF() const { return guard_cells.ng_alloc_F; };
 
-    void InitSpaceChargeField (WarpXParticleContainer& pc);
+    void ComputeSpaceChargeField (bool const reset_fields);
+    void AddSpaceChargeField (WarpXParticleContainer& pc);
     void computePhi (const amrex::Vector<std::unique_ptr<amrex::MultiFab> >& rho,
                      amrex::Vector<std::unique_ptr<amrex::MultiFab> >& phi,
                      std::array<amrex::Real, 3> const beta = {{0,0,0}},
@@ -390,8 +418,8 @@ public:
      */
     void InitializeExternalFieldsOnGridUsingParser (
          amrex::MultiFab *mfx, amrex::MultiFab *mfy, amrex::MultiFab *mfz,
-         ParserWrapper *xfield_parser, ParserWrapper *yfield_parser,
-         ParserWrapper *zfield_parser, amrex::IntVect x_nodal_flag,
+         ParserWrapper<3> *xfield_parser, ParserWrapper<3> *yfield_parser,
+         ParserWrapper<3> *zfield_parser, amrex::IntVect x_nodal_flag,
          amrex::IntVect y_nodal_flag, amrex::IntVect z_nodal_flag,
          const int lev);
 
@@ -540,6 +568,8 @@ private:
     void LoadBalance ();
 
     void BuildBufferMasks ();
+    void BuildBufferMasksInBox ( const amrex::Box tbx, amrex::IArrayBox &buffer_mask,
+                                 const amrex::IArrayBox &guard_mask, const int ng );
     const amrex::iMultiFab* getCurrentBufferMasks (int lev) const {
         return current_buffer_masks[lev].get();
     }
@@ -634,6 +664,8 @@ private:
     // Other runtime parameters
     int verbose = 1;
 
+    bool use_hybrid_QED = 0;
+
     int max_step   = std::numeric_limits<int>::max();
     amrex::Real stop_time = std::numeric_limits<amrex::Real>::max();
 
@@ -724,6 +756,8 @@ private:
     amrex::Vector<std::unique_ptr<SpectralSolver>> spectral_solver_fp;
     amrex::Vector<std::unique_ptr<SpectralSolver>> spectral_solver_cp;
 #endif
+    amrex::Vector<std::unique_ptr<FiniteDifferenceSolver>> m_fdtd_solver_fp;
+    amrex::Vector<std::unique_ptr<FiniteDifferenceSolver>> m_fdtd_solver_cp;
 
 #ifdef WARPX_USE_PSATD_HYBRID
 private:
