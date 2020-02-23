@@ -1325,10 +1325,9 @@ PhysicalParticleContainer::Evolve (int lev,
           if (cost) {
             Real wtCUPTI;
             const Box& tbx = pti.tilebox();
-            //wt = 1e15*(amrex::second() - wt) / tbx.d_numPts();
-            wtCUPTI = 1*computeElapsedTimeUserdata(activityRecordUserdata) / tbx.d_numPts();
+            wtCUPTI = 1e15*computeElapsedTimeUserdata(activityRecordUserdata) / tbx.d_numPts();
             //amrex::AllPrint() << "Setting costs"
-            //              << "; wt:        " << wt
+            //              << "; wtCUPTI:   " << wtCUPTI
             //              << "; Act. Size: " << activityRecordUserdata.size()
             //              << "; Proc.:     " << ParallelContext::MyProcSub()
             //              << "\n";
@@ -1336,7 +1335,7 @@ PhysicalParticleContainer::Evolve (int lev,
             amrex::ParallelFor(tbx,
                        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                        {
-                     costarr(i,j,k) += wtCUPTI;
+			 costarr(i,j,k) += wtCUPTI;
                        });
           }
         }
