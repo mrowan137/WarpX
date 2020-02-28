@@ -80,9 +80,10 @@ WarpX::LoadBalanceTimers ()
 	Real proposedEfficiency = 0.;
 	
         const DistributionMapping newdm = (load_balance_with_sfc)
-	    ? DistributionMapping::makeSFC(*costs[lev], false)
-	    : DistributionMapping::makeKnapSack(*costs[lev], nmax);
-	// Print the MPI_rank box_location n_cells n_particles
+            ? DistributionMapping::makeSFC(*costs[lev], false)
+            : DistributionMapping::makeKnapSack(*costs[lev], nmax);
+
+        // Print the MPI_rank box_location n_cells n_particles
 	const DistributionMapping& currdm = DistributionMap(lev);
 	for (int iter = 0; iter<(*costs[lev]).size(); ++iter)
 	{
@@ -92,6 +93,7 @@ WarpX::LoadBalanceTimers ()
 			 << " COST:       " << rcost[iter]
 			 << "\n";
 	}
+
         Real currEfficiency = 0.0;
         ComputeEfficiency(currdm, rcost, currEfficiency);
         //ComputeEfficiency(newdm, rcost, proposedEfficiency);
