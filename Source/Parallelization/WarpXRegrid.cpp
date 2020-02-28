@@ -35,12 +35,59 @@ WarpX::LoadBalanceTimers ()
     const int nLevels = finestLevel();
     for (int lev = 0; lev <= nLevels; ++lev)
     {
+	//Cell loop
         const Real nboxes = costs[lev]->size();
+	box_i_ind.resize(nboxes);
+	box_i_ind.assign(nboxes, 0.0);
+
+	box_j_ind.resize(nboxes);
+	box_j_ind.assign(nboxes, 0.0);
+	
+        MultiFab* Ex = Efield_fp[lev][0].get();
+        for (MFIter mfi(*Ex, false); mfi.isValid(); ++mfi)
+        {
+	    const Box& tbx = mfi.tilebox();
+	    box_i_ind[mfi.index()] = tbx.loVect()[0];
+	    box_j_ind[mfi.index()] = tbx.loVect()[2];
+        }
+	
+        // Get the inds and costs
+	amrex::Vector<Real>::iterator it_box_i_ind = box_i_ind.begin();
+        amrex::Real* itAddr_i = &(*it_box_i_ind);
+	amrex::Vector<Real>::iterator it_box_j_ind = box_j_ind.begin();
+        amrex::Real* itAddr_j = &(*it_box_j_ind);
+	DistributionMapping r;
+	amrex::Vector<Real> rcost((*costs[lev]).size(), 0.0);
+	for (MFIter mfi(*costs[lev]); mfi.isValid(); ++mfi)
+	{
+	    int i = mfi.index();
+	    rcost[i] = (*costs[lev])[mfi].sum(mfi.validbox(),0);
+	}
+
+	ParallelAllReduce::Sum(&rcost[0],
+			       rcost.size(),
+			       ParallelContext::CommunicatorSub());
+        ParallelAllReduce::Sum(itAddr_i,
+                               box_i_ind.size(),
+                               ParallelContext::CommunicatorSub());
+	ParallelAllReduce::Sum(itAddr_j,
+                               box_j_ind.size(),
+			       ParallelContext::CommunicatorSub());
         const Real nprocs = ParallelDescriptor::NProcs();
         const int nmax = static_cast<int>(std::ceil(nboxes/nprocs*load_balance_knapsack_factor));
         const DistributionMapping newdm = (load_balance_with_sfc)
             ? DistributionMapping::makeSFC(*costs[lev], false)
             : DistributionMapping::makeKnapSack(*costs[lev], nmax);
+	// Print the MPI_rank box_location n_cells n_particles
+	const DistributionMapping& currdm = DistributionMap(lev);
+	for (int iter = 0; iter<(*costs[lev]).size(); ++iter)
+	{
+	  amrex::Print() << "MPI RANK:   "  << currdm[iter]
+			 << " BOX LOC I:  " << box_i_ind[iter]
+			 << " BOX LOC J:  " << box_j_ind[iter]
+			 << " COST:       " << rcost[iter]
+			 << "\n";
+	}
         RemakeLevel(lev, t_new[lev], boxArray(lev), newdm);
     }
     mypc->Redistribute();
