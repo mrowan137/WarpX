@@ -719,6 +719,10 @@ private:
     /** Weight factor for particles in updating `costs_heuristic`. */
     amrex::Real costs_heuristic_particles_wt = 0.9;
 
+    // Box indices
+    amrex::Vector<amrex::Real> box_i_ind;
+    amrex::Vector<amrex::Real> box_j_ind;
+
     // Override sync every ? steps
     int override_sync_int = 1;
 
