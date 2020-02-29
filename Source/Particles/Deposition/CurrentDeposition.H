@@ -412,6 +412,7 @@ void doEsirkepovDepositionShapeN (const GetParticlePosition& GetPosition,
             int dil = 1, diu = 1;
             if (i_old < i_new) dil = 0;
             if (i_old > i_new) diu = 0;
+	      
 #if (defined WARPX_DIM_3D)
             int djl = 1, dju = 1;
             if (j_old < j_new) djl = 0;
@@ -423,35 +424,33 @@ void doEsirkepovDepositionShapeN (const GetParticlePosition& GetPosition,
 
 #if (defined WARPX_DIM_3D)
 
+	    // check the indices are correct
+	    // play with the order of the loop -- hardware dependent?
+	    amrex::Real sdzk_array[depos_order + 3][depos_order + 3] = {0.};
+	    amrex::Real sdzk_array_prev[depos_order + 3][depos_order + 3] = {0.};
             for (int k=dkl; k<=depos_order+2-dku; k++) {
+	        amrex::Real sdyj_vector[depos_order + 3] = {0.};
+	        amrex::Real sdyj_vector_prev[depos_order + 3] = {0.};
                 for (int j=djl; j<=depos_order+2-dju; j++) {
                     amrex::Real sdxi = 0.;
-                    for (int i=dil; i<=depos_order+1-diu; i++) {
+                    for (int i=dil; i<=depos_order+2-diu; i++) {
                         sdxi += wqx*(sx_old[i] - sx_new[i])*((sy_new[j] + 0.5*(sy_old[j] - sy_new[j]))*sz_new[k] +
                                                              (0.5*sy_new[j] + 1./3.*(sy_old[j] - sy_new[j]))*(sz_old[k] - sz_new[k]));
                         amrex::Gpu::Atomic::Add( &Jx_arr(lo.x+i_new-1+i, lo.y+j_new-1+j, lo.z+k_new-1+k), sdxi);
-                    }
-                }
-            }
-            for (int k=dkl; k<=depos_order+2-dku; k++) {
-                for (int i=dil; i<=depos_order+2-diu; i++) {
-                    amrex::Real sdyj = 0.;
-                    for (int j=djl; j<=depos_order+1-dju; j++) {
-                        sdyj += wqy*(sy_old[j] - sy_new[j])*((sz_new[k] + 0.5*(sz_old[k] - sz_new[k]))*sx_new[i] +
+			
+			sdyj_vector[i] = sdyj_vector_prev[i] + wqy*(sy_old[j] - sy_new[j])*((sz_new[k] + 0.5*(sz_old[k] - sz_new[k]))*sx_new[i] +
                                                              (0.5*sz_new[k] + 1./3.*(sz_old[k] - sz_new[k]))*(sx_old[i] - sx_new[i]));
-                        amrex::Gpu::Atomic::Add( &Jy_arr(lo.x+i_new-1+i, lo.y+j_new-1+j, lo.z+k_new-1+k), sdyj);
-                    }
-                }
-            }
-            for (int j=djl; j<=depos_order+2-dju; j++) {
-                for (int i=dil; i<=depos_order+2-diu; i++) {
-                    amrex::Real sdzk = 0.;
-                    for (int k=dkl; k<=depos_order+1-dku; k++) {
-                        sdzk += wqz*(sz_old[k] - sz_new[k])*((sx_new[i] + 0.5*(sx_old[i] - sx_new[i]))*sy_new[j] +
+                        amrex::Gpu::Atomic::Add( &Jy_arr(lo.x+i_new-1+i, lo.y+j_new-1+j, lo.z+k_new-1+k), sdyj_vector[i]);
+
+			sdzk_array[i][j] = sdzk_array_prev[i][j] +wqz*(sz_old[k] - sz_new[k])*((sx_new[i] + 0.5*(sx_old[i] - sx_new[i]))*sy_new[j] +
                                                              (0.5*sx_new[i] + 1./3.*(sx_old[i] - sx_new[i]))*(sy_old[j] - sy_new[j]));
-                        amrex::Gpu::Atomic::Add( &Jz_arr(lo.x+i_new-1+i, lo.y+j_new-1+j, lo.z+k_new-1+k), sdzk);
+                        amrex::Gpu::Atomic::Add( &Jz_arr(lo.x+i_new-1+i, lo.y+j_new-1+j, lo.z+k_new-1+k), sdzk_array[i][j]);
                     }
+		    std::memcpy(sdyj_vector_prev, sdyj_vector, sizeof(sdyj_vector_prev));
+		    std::memset(sdyj_vector, 0.0, sizeof(sdyj_vector));
                 }
+		std::memcpy(sdzk_array_prev, sdzk_array, sizeof(sdzk_array_prev));
+		std::memset(sdzk_array, 0.0, sizeof(sdzk_array));
             }
 
 #elif (defined WARPX_DIM_XZ) || (defined WARPX_DIM_RZ)
