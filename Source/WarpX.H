@@ -454,6 +454,10 @@ public:
      */
     void ComputeCostsHeuristic ();
 
+    /** \brief compute efficiency of a distribution mapping given a corresponding vector of costs
+     */
+    void ComputeEfficiency (const amrex::DistributionMapping& dm, const amrex::Vector<amrex::Real>& rcost, amrex::Real& efficiency);
+
 protected:
 
     /**
