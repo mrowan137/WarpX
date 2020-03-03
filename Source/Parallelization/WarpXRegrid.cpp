@@ -93,7 +93,6 @@ WarpX::LoadBalanceTimers ()
 			 << " COST:       " << rcost[iter]
 			 << "\n";
 	}
-
         Real currEfficiency = 0.0;
         ComputeEfficiency(currdm, rcost, currEfficiency);
         //ComputeEfficiency(newdm, rcost, proposedEfficiency);
@@ -145,7 +144,6 @@ WarpX::LoadBalanceHeuristic ()
 	    : DistributionMapping::makeKnapSack(*costs_heuristic[lev], nmax);
 
         amrex::Print() << "proposed efficiency (WarpX): " << proposedEfficiency;
-
 	// Print the MPI_rank box_location n_cells n_particles
 	const DistributionMapping& currdm = DistributionMap(lev);
 	for (int iter = 0; iter<(*costs_heuristic[lev]).size(); ++iter)
