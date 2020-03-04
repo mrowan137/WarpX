@@ -225,30 +225,6 @@ public:
         }
     }
 
-    static amrex::Vector<amrex::Real>* getCostsHeuristic (int lev) {
-        if (WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::Heuristic) {
-            if (m_instance) {
-                return m_instance->costs_heuristic[lev].get();
-            } else {
-                return nullptr;
-            }
-        } else {
-            return nullptr;
-        }
-    }
-
-    static amrex::Vector<amrex::Real>* getCostsHeuristic (int lev) {
-        if (WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::Heuristic) {
-            if (m_instance) {
-                return m_instance->costs_heuristic[lev].get();
-            } else {
-                return nullptr;
-            }
-        } else {
-            return nullptr;
-        }
-    }
-    
     static amrex::IntVect filter_npass_each_dir;
     BilinearFilter bilinear_filter;
     amrex::Vector< std::unique_ptr<NCIGodfreyFilter> > nci_godfrey_filter_exeybz;
