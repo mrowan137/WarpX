@@ -222,6 +222,21 @@ public:
             }
         } else {
             return nullptr;
+            }
+        } else {
+            return nullptr;
+        }
+    }
+
+    static amrex::Vector<amrex::Real>* getCostsHeuristic (int lev) {
+        if (WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::Heuristic) {
+            if (m_instance) {
+                return m_instance->costs_heuristic[lev].get();
+            } else {
+                return nullptr;
+            }
+        } else {
+            return nullptr;
         }
     }
 
@@ -453,6 +468,10 @@ public:
     /** \brief add particle and cell contributions to multifabs in `costs_heuristic`
      */
     void ComputeCostsHeuristic ();
+
+    /** \brief compute efficiency of a distribution mapping given a corresponding vector of costs
+     */
+    void ComputeEfficiency (const amrex::DistributionMapping& dm, const amrex::Vector<amrex::Real>& rcost, amrex::Real& efficiency);
 
 protected:
 
@@ -703,6 +722,13 @@ private:
     amrex::Real costs_heuristic_cells_wt = 0.1;
     /** Weight factor for particles in updating `costs_heuristic`. */
     amrex::Real costs_heuristic_particles_wt = 0.9;
+<<<<<<< HEAD
+=======
+
+    // Box indices
+    amrex::Vector<amrex::Real> box_i_ind;
+    amrex::Vector<amrex::Real> box_j_ind;
+>>>>>>> 2cc9ac6a50ca55597b3da380af04e0b21dc99b4c
 
     // Override sync every ? steps
     int override_sync_int = 1;
