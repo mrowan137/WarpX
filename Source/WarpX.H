@@ -222,24 +222,9 @@ public:
             }
         } else {
             return nullptr;
-            }
-        } else {
-            return nullptr;
         }
     }
-
-    static amrex::Vector<amrex::Real>* getCostsHeuristic (int lev) {
-        if (WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::Heuristic) {
-            if (m_instance) {
-                return m_instance->costs_heuristic[lev].get();
-            } else {
-                return nullptr;
-            }
-        } else {
-            return nullptr;
-        }
-    }
-
+    
     static amrex::IntVect filter_npass_each_dir;
     BilinearFilter bilinear_filter;
     amrex::Vector< std::unique_ptr<NCIGodfreyFilter> > nci_godfrey_filter_exeybz;
@@ -722,13 +707,10 @@ private:
     amrex::Real costs_heuristic_cells_wt = 0.1;
     /** Weight factor for particles in updating `costs_heuristic`. */
     amrex::Real costs_heuristic_particles_wt = 0.9;
-<<<<<<< HEAD
-=======
 
     // Box indices
     amrex::Vector<amrex::Real> box_i_ind;
     amrex::Vector<amrex::Real> box_j_ind;
->>>>>>> 2cc9ac6a50ca55597b3da380af04e0b21dc99b4c
 
     // Override sync every ? steps
     int override_sync_int = 1;
