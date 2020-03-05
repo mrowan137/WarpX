@@ -60,6 +60,34 @@ WarpX::EvolveEM (int numsteps)
 #ifdef WARPX_USE_PY
         if (warpx_py_beforestep) warpx_py_beforestep();
 #endif
+            
+        if (step=0) 
+        {
+            // Print number of cells
+            MultiFab* Ex = Efield_fp[0][0].get();
+            Real n_cells = 0.;
+            for (MFIter mfi(*Ex, false); mfi.isValid(); ++mfi)
+            {
+                const Box& gbx = mfi.growntilebox();
+                n_cells += gbx.numPts();
+            }
+	    amrex::Print() << "n_cells: " << n_cells << "\n";
+
+	    // Species loop
+            Real n_prtls = 0.;
+            auto & mypc = WarpX::GetInstance().GetPartContainer();
+            auto nSpecies = mypc.nSpecies();
+	    for (int i_s = 0; i_s < nSpecies; ++i_s)
+	    {
+                auto & myspc = mypc.GetParticleContainer(i_s);
+                // Particle loop
+                for (WarpXParIter pti(myspc, 0); pti.isValid(); ++pti)
+                {
+                    n_prtls += pti.numParticles();
+                }
+            }
+	    amrex::Print() << "n_prtls: " << n_prtls << "\n";
+        }
 
         MultiFab* cost = WarpX::getCosts(0);
         amrex::Vector<amrex::Real>* cost_heuristic = WarpX::getCostsHeuristic(0);
