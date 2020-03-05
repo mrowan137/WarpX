@@ -61,7 +61,7 @@ WarpX::EvolveEM (int numsteps)
         if (warpx_py_beforestep) warpx_py_beforestep();
 #endif
             
-        if (step=0) 
+        if (step==0) 
         {
             // Print number of cells
             MultiFab* Ex = Efield_fp[0][0].get();
