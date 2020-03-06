@@ -51,11 +51,6 @@ WarpX::LoadBalanceHeuristic ()
 {
     AMREX_ALWAYS_ASSERT(costs_heuristic[0] != nullptr);
     WarpX::ComputeCostsHeuristic();
-
-    if (WarpX::bin_costs)
-    {
-        // Bin the costs
-    }
     
     const int nLevels = finestLevel();
     for (int lev = 0; lev <= nLevels; ++lev)
@@ -68,6 +63,11 @@ WarpX::LoadBalanceHeuristic ()
                                costs_heuristic[lev]->size(),
                                ParallelContext::CommunicatorSub());
 #endif
+        if (WarpX::bin_costs)
+        {
+            // Bin the costs
+        }
+        
         const amrex::Real nboxes = costs_heuristic[lev]->size();
         const amrex::Real nprocs = ParallelContext::NProcsSub();
         const int nmax = static_cast<int>(std::ceil(nboxes/nprocs*load_balance_knapsack_factor));

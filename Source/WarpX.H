@@ -703,6 +703,12 @@ private:
     amrex::Real costs_heuristic_cells_wt = 0.1;
     /** Weight factor for particles in updating `costs_heuristic`. */
     amrex::Real costs_heuristic_particles_wt = 0.9;
+    /** Option to bin box costs, used  in `LoadBalance`, into `n_bins_costs` logarithmically 
+     * spaced bins between 0 and 1. */
+    bool bin_costs = false;
+    /** Parameter controlling the number of logarithmically spaced bins if using the
+     * `bin_costs` option. */
+    int n_bins_costs = 5;
 
     // Override sync every ? steps
     int override_sync_int = 1;
