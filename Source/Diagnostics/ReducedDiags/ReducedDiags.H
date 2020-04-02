@@ -42,6 +42,7 @@ public:
 
     /// output data
     std::vector<amrex::Real> m_data;
+    //std::vector<std::string> m_data_s;
 
     /** constructor
      *  @param[in] rd_name reduced diags name */

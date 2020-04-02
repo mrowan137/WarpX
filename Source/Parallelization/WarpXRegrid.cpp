@@ -10,6 +10,10 @@
 #include <WarpXAlgorithmSelection.H>
 #include <AMReX_BLProfiler.H>
 
+#include <set>
+
+#define MPI_CHECK(cmd) {int error = cmd; if(error!=MPI_SUCCESS){ printf("<%s>:%i ",__FILE__,__LINE__); throw std::runtime_error(std::string("[MPI] Error")); }}
+
 using namespace amrex;
 
 void
@@ -50,28 +54,263 @@ void
 WarpX::LoadBalanceHeuristic ()
 {
     AMREX_ALWAYS_ASSERT(costs_heuristic[0] != nullptr);
-    WarpX::ComputeCostsHeuristic(costs_heuristic);
+    //WarpX::ComputeCostsHeuristic(costs_heuristic);
 
     const int nLevels = finestLevel();
     for (int lev = 0; lev <= nLevels; ++lev)
     {
 #ifdef AMREX_USE_MPI
-        // Parallel reduce the costs_heurisitc
-        amrex::Vector<Real>::iterator it = (*costs_heuristic[lev]).begin();
+        const DistributionMapping& currdm = DistributionMap(lev);
+                
+        // Hacking way to get hosts
+        std::unique_ptr<Vector<Real> > hosts;
+        hosts.reset(new Vector<Real>);
+        hosts->resize(costs_heuristic[lev]->size());
+        MultiFab* Ex = Efield_fp[lev][0].get();
+        for (MFIter mfi(*Ex, false); mfi.isValid(); ++mfi)
+        {
+            const Box& tbx = mfi.tilebox();
+            char hostname[MPI_MAX_PROCESSOR_NAME];
+            int length;
+            MPI_CHECK( MPI_Get_processor_name( hostname, &length ) );
+            //amrex::AllPrint() << "I am : " << ParallelDescriptor::MyProc() << "; hostname: " << hostname << "\n";
+            //amrex::AllPrint() << "HOSTNAME: "  << hostname
+            //                  << "\n";
+            std::string hostnameString(hostname);
+            (*hosts)[mfi.index()] = float(std::stoi(hostnameString.erase(0, 1).erase(2, 1))); // hostname converted
+        }
+        
+        // Parallel reduce to IO proc and get data over all procs
+        amrex::Vector<Real>::iterator it = (*hosts).begin();
         amrex::Real* itAddr = &(*it);
         ParallelAllReduce::Sum(itAddr,
-                               costs_heuristic[lev]->size(),
+                               hosts->size(),
                                ParallelContext::CommunicatorSub());
-#endif
-        const amrex::Real nboxes = costs_heuristic[lev]->size();
-        const amrex::Real nprocs = ParallelContext::NProcsSub();
-        const int nmax = static_cast<int>(std::ceil(nboxes/nprocs*load_balance_knapsack_factor));
 
-        const DistributionMapping newdm = (load_balance_with_sfc)
-            ? DistributionMapping::makeSFC(*costs_heuristic[lev], boxArray(lev), false)
-            : DistributionMapping::makeKnapSack(*costs_heuristic[lev], nmax);
+        // Now the host ID are filled complete in hosts
+        // Knowing the
+        //     mfi.index()-->host
+        //     mfi.index()-->proc
+        //     ==> proc --> host
+        // for partitions, reassign proc to mfi.index() 
+        //     mfi.index()-->proc
+        // so that so the mfi in same 3x2 partition have the same node.
+        // Then you can remake a level.
+
+        // Everyone knows now the mfi.index space --> node mapping
+        
+        // 1. Get the unique hosts
+        std::set<Real> unique_hosts_set;
+        for (auto h : (*hosts))
+        {
+            unique_hosts_set.insert(h);
+        }
+
+        std::unique_ptr< Vector<Real> > unique_hosts;
+        unique_hosts.reset(new Vector<Real>);
+        for (std::set<Real>::iterator it=unique_hosts_set.begin(); it!=unique_hosts_set.end(); ++it)
+        {
+            unique_hosts->push_back(*it);
+        }
+
+        
+        // 2. make a dict of unique_hosts = {h1:[], h2:[], h3:[], ... } from unique hosts --> ranks
+        std::map<amrex::Real, std::unique_ptr<Vector<amrex::Real> > > hostsToProcs;
+        for (auto& u : (*unique_hosts))
+        {
+            std::unique_ptr<Vector<amrex::Real> > procs;
+            hostsToProcs[u].reset(new Vector<amrex::Real>);
+        }
+
+        int blocking_factor = blockingFactor(lev)[0];
+
+        int ind = 0;
+        for (auto& h : (*hosts))
+        {
+            (*hostsToProcs[ h ]).push_back(currdm[ind]);
+            ind+=1;
+        }
+        
+        //amrex::AllPrint() << currdm;
+        
+        // for (MFIter mfi(*Ex, false); mfi.isValid(); ++mfi)
+        // {
+        //     const Box& tbx = mfi.tilebox();
+        //     int i = tbx.loVect()[0]/blocking_factor;
+        //     int j = tbx.loVect()[1]/blocking_factor;
+        //     int k = tbx.loVect()[2]/blocking_factor;
+
+        //     int i_rel = i%3;
+        //     int j_rel = j%2;
+            
+        //     (*hostsToProcs[ (*hosts)[mfi.index()] ])[3*j_rel + i_rel] = 1.*currdm[mfi.index()];
+        //     amrex::AllPrint() << "MyProc: " << ParallelDescriptor::MyProc()
+        //                       << "; proc " << 1.*currdm[mfi.index()]
+        //                       << " in loc "<< 3*j_rel + i_rel
+        //                       << " (" << i << j << k << ") " << " (" << i_rel << j_rel << ") "
+        //                       << " for host "
+        //                       << (*hosts)[mfi.index()] << "\n";
+        // }
+
+        // for (auto& u : (*unique_hosts))
+        // {
+        //     amrex::AllPrint() << "MyProc: " << ParallelDescriptor::MyProc() << " ";
+        //     for (auto x: (*hostsToProcs[u]))
+        //     {
+        //         amrex::AllPrint() << x << " ";
+        //     }
+        //     amrex::AllPrint() << "\n";
+        // }
+        
+        
+        // Reduce the hostToProce
+        // for (auto& u : (*unique_hosts))
+        // {
+        //     //amrex::Print() << "It's a unique host; " << u << "\n";
+        //     Vector<Real>::iterator it = (*hostsToProcs[u]).begin();
+        //     Real* itAddr = &(*it);
+        //     ParallelAllReduce::Sum(itAddr,
+        //                            hostsToProcs[u]->size(),
+        //                            ParallelContext::CommunicatorSub());
+        // }
+        
+        // 3. Designate positions f(i,j,k) --> h1
+        //    strategy: zigzag through the domain
+        const auto dx = geom[lev].CellSizeArray();
+        const RealBox& real_box = geom[lev].ProbDomain();
+        int mx, my, mz;
+        mx = int( (real_box.hi(0) - real_box.lo(0))/(dx[0]*blocking_factor) );
+        my = int( (real_box.hi(1) - real_box.lo(1))/(dx[1]*blocking_factor) );
+        mz = int( (real_box.hi(2) - real_box.lo(2))/(dx[2]*blocking_factor) );
+        int kjiToHost[mz][my][mx] = {0};
+
+        int uh_ind = 0;
+        //amrex::Print() << "(mx, my, mz)" << "(" << mx << ", " << my << ", " << mz << ")\n";
+        for (int k=0; k<mz; k++)
+        {
+            // Snake through the i j plane
+            int j_max = 1;
+            int toggle = 1;
+            for (int j_mult=1; j_mult<=my/2; j_mult++)
+            {
+                j_max = 2*j_mult - 1;
+                int j = j_max - 1;
+
+                int i = 0;
+                while (i<mx)
+                {
+                    //amrex::Print() << "Setting: " << (*unique_hosts)[uh_ind] << "\n";
+                    
+                    kjiToHost[k][j][i] = (*unique_hosts)[uh_ind];
+                    //amrex::AllPrint() << "(k,j,i)" << "(" << k << ", " << j << ", " << i << ") -->" << kjiToHost[k][j][i] << "\n";
+                    j+=toggle;
+                    kjiToHost[k][j][i] = (*unique_hosts)[uh_ind];
+                    //amrex::AllPrint() << "(k,j,i)" << "(" << k << ", " << j << ", " << i << ") -->" << kjiToHost[k][j][i] << "\n";
+                    i+=1;
+                    kjiToHost[k][j][i] = (*unique_hosts)[uh_ind];
+                    //amrex::AllPrint() << "(k,j,i)" << "(" << k << ", " << j << ", " << i << ") -->" << kjiToHost[k][j][i] << "\n";
+                    j-=toggle;
+                    kjiToHost[k][j][i] = (*unique_hosts)[uh_ind];
+                    //amrex::AllPrint() << "(k,j,i)" << "(" << k << ", " << j << ", " << i << ") -->" << kjiToHost[k][j][i] << "\n";
+                    i+=1;
+                    kjiToHost[k][j][i] = (*unique_hosts)[uh_ind];
+                    //amrex::AllPrint() << "(k,j,i)" << "(" << k << ", " << j << ", " << i << ") -->" << kjiToHost[k][j][i] << "\n";
+                    j+=toggle;
+                    kjiToHost[k][j][i] = (*unique_hosts)[uh_ind];
+                    //amrex::AllPrint() << "(k,j,i)" << "(" << k << ", " << j << ", " << i << ") -->" << kjiToHost[k][j][i] << "\n";
+                    i+=1;
+
+                    toggle *= -1;
+                    uh_ind += 1;
+                }
+            }
+        }
+
+        // for (int k=0; k<mz; k++)
+        // {
+        //     for (int j=0; j<my; j++)
+        //     {
+        //         for (int i=0; i<mx; i++)
+        //         {
+        //             // amrex::AllPrint() << "MyProc: " << ParallelDescriptor::MyProc() << " "
+        //             //                   << " ijk " << i << " " << j << " " << k << " "
+        //             //                   << kjiToHost[k][j][i] << "\n";
+        //         }
+        //     }
+        // }
+        // 4. Loop over keys of the distribution mapping; get mfi position; pop from dict to get
+        //        f(mfi.position) --> hX
+        //        dm[mfi.index()] = unique_hosts[hX].pop()
+        //amrex::Print() << "--------";
+        int pmapArray[costs_heuristic[lev]->size()] = {0};
+        int n = sizeof(pmapArray) / sizeof(pmapArray[0]);
+        Vector<int> pmap(pmapArray, pmapArray + n);
+        for (MFIter mfi(*Ex, false); mfi.isValid(); ++mfi)
+        {
+            const Box& tbx = mfi.tilebox();
+            int i = tbx.loVect()[0]/blocking_factor;
+            int j = tbx.loVect()[1]/blocking_factor;
+            int k = tbx.loVect()[2]/blocking_factor;
+
+            int i_rel = i%3;
+            int j_rel = j%2;
+
+            //amrex::AllPrint() << "(k,j,i)" << "(" << k << ", " << j << ", " << i << ") -->" << kjiToHost[k][j][i] << "\n";
+
+            // Every box gets a different proc
+            // for (auto x: (*hostsToProcs[kjiToHost[k][j][i]]))
+            // {
+            //     amrex::Print() << ParallelDescriptor::MyProc() << ": " << x <<"\n";
+            // }
+            pmap[mfi.index()] = (*hostsToProcs[kjiToHost[k][j][i]])[3*j_rel + i_rel];
+            // amrex::AllPrint() << "Asign to pos " << mfi.index()
+            //                << " the rank " << (*hostsToProcs[kjiToHost[k][j][i]])[3*j_rel + i_rel]
+            //                << " my local position is " << 3*j_rel + i_rel << "\n";
+            //hostsToProcs[kjiToHost[k][j][i]]->pop_back();            
+        }
+        Vector<int>::iterator itInt = pmap.begin();
+        int* itIntAddr = &(*itInt);
+        ParallelAllReduce::Sum(itIntAddr,
+                               pmap.size(),
+                               ParallelContext::CommunicatorSub());
+        
+        DistributionMapping newdm(pmap);
+        //amrex::Print() << "Make the new !!!!!";
+        //amrex::Print() << newdm;
+        //RemakeLevel(lev, t_new[lev], boxArray(lev), newdm);
+
+        //newdm = DistributionMapping::makeSFC(*costs_heuristic[lev], boxArray(lev), false);
+
+        //amrex::Print() << newdm;
 
         RemakeLevel(lev, t_new[lev], boxArray(lev), newdm);
+
+        
+        // Useful printing
+        // for (auto& x : hostsToProcs)
+        // {
+        //     for ( auto& y : (*x.second) )
+        //     {
+        //         amrex::AllPrint() << x.first << " has " << y << "\n";
+        //     }
+        // }
+        
+        // Parallel reduce the costs_heurisitc
+        //amrex::Vector<Real>::iterator it = (*costs_heuristic[lev]).begin();
+        //amrex::Real* itAddr = &(*it);
+        //ParallelAllReduce::Sum(itAddr,
+        //                      costs_heuristic[lev]->size(),
+        //                       ParallelContext::CommunicatorSub());
+#endif
+        //const amrex::Real nboxes = costs_heuristic[lev]->size();
+        //const amrex::Real nprocs = ParallelContext::NProcsSub();
+        //const int nmax = static_cast<int>(std::ceil(nboxes/nprocs*load_balance_knapsack_factor));
+
+        // const DistributionMapping newdm = (load_balance_with_sfc)
+        //     ? DistributionMapping::makeSFC(*costs_heuristic[lev], boxArray(lev), false)
+        //     : DistributionMapping::makeKnapSack(*costs_heuristic[lev], nmax);
+
+        // RemakeLevel(lev, t_new[lev], boxArray(lev), newdm);
     }
     mypc->Redistribute();
 }

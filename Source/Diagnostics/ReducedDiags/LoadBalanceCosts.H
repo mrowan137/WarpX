@@ -11,6 +11,8 @@
 #include "WarpX.H"
 #include "ReducedDiags.H"
 
+#define MPI_CHECK(cmd) {int error = cmd; if(error!=MPI_SUCCESS){ printf("<%s>:%i ",__FILE__,__LINE__); throw std::runtime_error(std::string("[MPI] Error")); }}
+
 /**
  *  This class mainly contains a function that update the
  *  costs (used in load balance) for writing to output.
@@ -20,8 +22,8 @@ class LoadBalanceCosts : public ReducedDiags
 public:
 
     /** number of data fields we save for each box
-     *  (cost, processor, level, i_low, j_low, k_low) */
-    const int m_nDataFields = 6;
+     *  (cost, processor, hostname, level, i_low, j_low, k_low) */
+    const int m_nDataFields = 7;
 
     /** used to keep track of max number of boxes over all timesteps; this allows
      *  to compute the number of NaNs required to fill jagged array into a

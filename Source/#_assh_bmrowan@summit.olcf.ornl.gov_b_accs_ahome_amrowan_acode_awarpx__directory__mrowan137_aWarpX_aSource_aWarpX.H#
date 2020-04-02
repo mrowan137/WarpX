@@ -720,7 +720,6 @@ private:
     /** Collection of vectors to keep track of weights, based on number of cells
      * and number of particles per box; for use in load balancing routines. */
     amrex::Vector<std::unique_ptr<amrex::Vector<amrex::Real> > > costs_heuristic;
-    amrex::Vector<std::unique_ptr<amrex::Vector<amrex::Real> > > host_names;
     /** Load balance with 'space filling curve' strategy. */
     int load_balance_with_sfc = 0;
     /** Controls the maximum number of boxes that can be assigned to a rank during

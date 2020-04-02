@@ -65,9 +65,10 @@ WarpX::Evolve (int numsteps)
         amrex::Vector<amrex::Real>* cost_heuristic = WarpX::getCostsHeuristic(0);
         if (cost != nullptr || cost_heuristic != nullptr) {
 #ifdef WARPX_USE_PSATD
-            amrex::Abort("LoadBalance for PSATD: TODO");
+            //amrex::Abort("LoadBalance for PSATD: TODO");
 #endif
-            if (step > 0 && (step+1) % load_balance_int == 0)
+            //if (step > 0 && (step+1) % load_balance_int == 0)
+            if (step == 0)
             {
                 LoadBalance();
 

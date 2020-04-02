@@ -78,12 +78,25 @@ void LoadBalanceCosts::ComputeDiags (int step)
         for (MFIter mfi(Ex, false); mfi.isValid(); ++mfi)
         {
             const Box& tbx = mfi.tilebox();
-            m_data[shift + mfi.index()*m_nDataFields + 0] = (*costs_heuristic[lev])[mfi.index()];
+            float cost_value = (*costs_heuristic[lev])[mfi.index()];
+            m_data[shift + mfi.index()*m_nDataFields + 0] = cost_value;
             m_data[shift + mfi.index()*m_nDataFields + 1] = dm[mfi.index()];
-            m_data[shift + mfi.index()*m_nDataFields + 2] = lev;
-            m_data[shift + mfi.index()*m_nDataFields + 3] = tbx.loVect()[0];
-            m_data[shift + mfi.index()*m_nDataFields + 4] = tbx.loVect()[1];
-            m_data[shift + mfi.index()*m_nDataFields + 5] = tbx.loVect()[2];
+
+            char hostname[MPI_MAX_PROCESSOR_NAME];
+            int length;
+            MPI_CHECK( MPI_Get_processor_name( hostname, &length ) );
+            //amrex::AllPrint() << "I am : " << ParallelDescriptor::MyProc() << "; hostname: " << hostname << "\n";
+            amrex::AllPrint() << "BOX LOC I: " << tbx.loVect()[0] << " "
+                              << "BOX LOC J: " << tbx.loVect()[1] << " "
+                              << "BOX LOC K: " << tbx.loVect()[2] << " "
+                              << "HOSTNAME: "  << hostname
+                              << "\n";
+            
+            m_data[shift + mfi.index()*m_nDataFields + 2] = 0.0;
+            m_data[shift + mfi.index()*m_nDataFields + 3] = lev;
+            m_data[shift + mfi.index()*m_nDataFields + 4] = tbx.loVect()[0];
+            m_data[shift + mfi.index()*m_nDataFields + 5] = tbx.loVect()[1];
+            m_data[shift + mfi.index()*m_nDataFields + 6] = tbx.loVect()[2];
         }
 
         // we looped through all the boxes on level lev, update the shift index
@@ -94,13 +107,13 @@ void LoadBalanceCosts::ComputeDiags (int step)
     ParallelDescriptor::ReduceRealSum(m_data.data(), m_data.size(), ParallelDescriptor::IOProcessorNumber());
 
     /* m_data now contains up-to-date values for:
-     *  [[cost, proc, lev, i_low, j_low, k_low] of box 0 at level 0,
-     *   [cost, proc, lev, i_low, j_low, k_low] of box 1 at level 0,
-     *   [cost, proc, lev, i_low, j_low, k_low] of box 2 at level 0,
+     *  [[cost, proc, hostname, lev, i_low, j_low, k_low] of box 0 at level 0,
+     *   [cost, proc, hostname, lev, i_low, j_low, k_low] of box 1 at level 0,
+     *   [cost, proc, hostname, lev, i_low, j_low, k_low] of box 2 at level 0,
      *   ...
-     *   [cost, proc, lev, i_low, j_low, k_low] of box 0 at level 1,
-     *   [cost, proc, lev, i_low, j_low, k_low] of box 1 at level 1,
-     *   [cost, proc, lev, i_low, j_low, k_low] of box 2 at level 1,
+     *   [cost, proc, hostname, lev, i_low, j_low, k_low] of box 0 at level 1,
+     *   [cost, proc, hostname, lev, i_low, j_low, k_low] of box 1 at level 1,
+     *   [cost, proc, hostname, lev, i_low, j_low, k_low] of box 2 at level 1,
      *   ......] */
 
 }
@@ -138,15 +151,18 @@ void LoadBalanceCosts::WriteToFile (int step) const
             ofs << "proc_box_"+std::to_string(boxNumber)+"()";
             ofs << m_sep;
             ofs << "[" + std::to_string(5 + m_nDataFields*boxNumber) + "]";
-            ofs << "lev_box_"+std::to_string(boxNumber)+"()";
+            ofs << "hostname_box_"+std::to_string(boxNumber)+"()";
             ofs << m_sep;
             ofs << "[" + std::to_string(6 + m_nDataFields*boxNumber) + "]";
-            ofs << "i_low_box_"+std::to_string(boxNumber)+"()";
+            ofs << "lev_box_"+std::to_string(boxNumber)+"()";
             ofs << m_sep;
             ofs << "[" + std::to_string(7 + m_nDataFields*boxNumber) + "]";
-            ofs << "j_low_box_"+std::to_string(boxNumber)+"()";
+            ofs << "i_low_box_"+std::to_string(boxNumber)+"()";
             ofs << m_sep;
             ofs << "[" + std::to_string(8 + m_nDataFields*boxNumber) + "]";
+            ofs << "j_low_box_"+std::to_string(boxNumber)+"()";
+            ofs << m_sep;
+            ofs << "[" + std::to_string(9 + m_nDataFields*boxNumber) + "]";
             ofs << "k_low_box_"+std::to_string(boxNumber)+"()";
         }
         ofs << std::endl;

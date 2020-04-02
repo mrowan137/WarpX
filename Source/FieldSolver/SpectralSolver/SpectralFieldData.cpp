@@ -225,7 +225,7 @@ SpectralFieldData::ForwardTransform( const MultiFab& mf,
         {
             Box realspace_bx = mf[mfi].box(); // Copy the box
             realspace_bx.enclosedCells(); // Discard last point in nodal direction
-            AMREX_ALWAYS_ASSERT( realspace_bx == tmpRealField[mfi].box() );
+            //AMREX_ALWAYS_ASSERT( realspace_bx == tmpRealField[mfi].box() );
             Array4<const Real> mf_arr = mf[mfi].array();
             Array4<Real> tmp_arr = tmpRealField[mfi].array();
             ParallelFor( realspace_bx,
