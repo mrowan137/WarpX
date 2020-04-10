@@ -68,6 +68,7 @@ WarpX::Evolve (int numsteps)
 #endif
             if (step > 0 && (step+1) % load_balance_int == 0)
             {
+                amrex::Gpu::synchronize();
                 LoadBalance();
 
                 // Reset the costs to 0
