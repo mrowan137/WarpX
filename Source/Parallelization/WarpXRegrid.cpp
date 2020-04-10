@@ -65,6 +65,7 @@ WarpX::LoadBalance ()
 void
 WarpX::RemakeLevel (int lev, Real /*time*/, const BoxArray& ba, const DistributionMapping& dm)
 {
+    WARPX_PROFILE("WarpX::RemakeLevel()");
     if (ba == boxArray(lev))
     {
         if (ParallelDescriptor::NProcs() == 1) return;
