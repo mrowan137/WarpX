@@ -36,29 +36,29 @@ WarpX::LoadBalance ()
         ParallelAllReduce::Sum(itAddr, costs[lev]->size(), ParallelContext::CommunicatorSub());
 #endif
         // Compute efficiency for the current distribution mapping
-        const DistributionMapping& currentdm = DistributionMap(lev);
-        amrex::Real currentEfficiency = 0.0;
-        if (load_balance_efficiency_ratio_threshold > 0.0)
-        {
-            ComputeDistributionMappingEfficiency(currentdm, *costs[lev],
-                                                 currentEfficiency);
-        }
+        // const DistributionMapping& currentdm = DistributionMap(lev);
+        // amrex::Real currentEfficiency = 0.0;
+        // if (load_balance_efficiency_ratio_threshold > 0.0)
+        // {
+        //     ComputeDistributionMappingEfficiency(currentdm, *costs[lev],
+        //                                          currentEfficiency);
+        // }
 
-        const amrex::Real nboxes = costs[lev]->size();
-        const amrex::Real nprocs = ParallelContext::NProcsSub();
-        const int nmax = static_cast<int>(std::ceil(nboxes/nprocs*load_balance_knapsack_factor));
+        //const amrex::Real nboxes = costs[lev]->size();
+        //const amrex::Real nprocs = ParallelContext::NProcsSub();
+        //const int nmax = static_cast<int>(std::ceil(nboxes/nprocs*load_balance_knapsack_factor));
 
-        amrex::Real proposedEfficiency = 0.0;
-        const DistributionMapping newdm = (load_balance_with_sfc)
-            ? DistributionMapping::makeSFC(*costs[lev], boxArray(lev), proposedEfficiency, false)
-            : DistributionMapping::makeKnapSack(*costs[lev], proposedEfficiency, nmax);
+        //amrex::Real proposedEfficiency = 0.0;
+        //const DistributionMapping newdm = (load_balance_with_sfc)
+            //? DistributionMapping::makeSFC(*costs[lev], boxArray(lev), proposedEfficiency, false)
+            //    : DistributionMapping::makeKnapSack(*costs[lev], proposedEfficiency, nmax);
 
-        if (proposedEfficiency > load_balance_efficiency_ratio_threshold*currentEfficiency)
-        {
-            RemakeLevel(lev, t_new[lev], boxArray(lev), newdm);
-        }
+        //if (proposedEfficiency > load_balance_efficiency_ratio_threshold*currentEfficiency)
+            //{
+            //RemakeLevel(lev, t_new[lev], boxArray(lev), newdm);
+            //}
     }
-    mypc->Redistribute();
+    //mypc->Redistribute();
 }
 
 
