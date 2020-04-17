@@ -59,16 +59,16 @@ WarpX::LoadBalance ()
         amrex::Real proposedEfficiency = 0.0;
 
         const DistributionMapping newdm = (load_balance_with_sfc)
-            ? DistributionMapping::makeSFC(*costs[lev], boxArray(lev), proposedEfficiency, false)
-            : DistributionMapping::makeKnapSack(*costs[lev], proposedEfficiency, nmax);
+            ? DistributionMapping::makeSFC(*Efield_fp[lev][0], proposedEfficiency, false)
+            : DistributionMapping::makeKnapSack(*Efield_fp[lev][0], proposedEfficiency, nmax);
 
-        if (proposedEfficiency > load_balance_efficiency_ratio_threshold*currentEfficiency)
+        if (true)
         {
             RemakeLevel(lev, t_new[lev], boxArray(lev), newdm);
             doRedistribute = true;
         }
     }
-    if (doRedistribute)
+    if (true)
     {
         mypc->Redistribute();
     }
