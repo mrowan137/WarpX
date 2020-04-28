@@ -70,7 +70,6 @@ WarpX::LoadBalance ()
         if (load_balance_efficiency_ratio_threshold > 0.0
             & ParallelDescriptor::MyProc() == ParallelDescriptor::IOProcessorNumber())
         {
-            amrex::Print() << "curr: " << currentEfficiency << ", prop: " << proposedEfficiency << "\n";
             doLoadBalance = (proposedEfficiency > load_balance_efficiency_ratio_threshold*currentEfficiency);
         }
 
