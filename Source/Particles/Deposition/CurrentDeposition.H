@@ -388,15 +388,15 @@ void doEsirkepovDepositionShapeN (const GetParticlePosition& GetPosition,
             Real const x_new = (rp_new - xmin)*dxi;
             Real const x_old = (rp_old - xmin)*dxi;
 #else
-            Real const x_new = (xp - xmin)*dxi;
-            Real const x_old = x_new - dtsdx0*uxp[ip]*gaminv;
+            double const x_new = (xp - xmin)*dxi;
+            double const x_old = x_new - dtsdx0*uxp[ip]*gaminv;
 #endif
 #if (defined WARPX_DIM_3D)
-            Real const y_new = (yp - ymin)*dyi;
-            Real const y_old = y_new - dtsdy0*uyp[ip]*gaminv;
+            double const y_new = (yp - ymin)*dyi;
+            double const y_old = y_new - dtsdy0*uyp[ip]*gaminv;
 #endif
-            Real const z_new = (zp - zmin)*dzi;
-            Real const z_old = z_new - dtsdz0*uzp[ip]*gaminv;
+            double const z_new = (zp - zmin)*dzi;
+            double const z_old = z_new - dtsdz0*uzp[ip]*gaminv;
 
 #if (defined WARPX_DIM_RZ)
             Real const vy = (-uxp[ip]*sintheta_mid + uyp[ip]*costheta_mid)*gaminv;
@@ -408,26 +408,26 @@ void doEsirkepovDepositionShapeN (const GetParticlePosition& GetPosition,
             // Note that there are extra values above and below
             // to possibly hold the factor for the old particle
             // which can be at a different grid location.
-            Real sx_new[depos_order + 3] = {0._rt};
-            Real sx_old[depos_order + 3] = {0._rt};
+            double sx_new[depos_order + 3] = {0.};
+            double sx_old[depos_order + 3] = {0.};
 #if (defined WARPX_DIM_3D)
-            Real sy_new[depos_order + 3] = {0._rt};
-            Real sy_old[depos_order + 3] = {0._rt};
+            double sy_new[depos_order + 3] = {0.};
+            double sy_old[depos_order + 3] = {0.};
 #endif
-            Real sz_new[depos_order + 3] = {0._rt};
-            Real sz_old[depos_order + 3] = {0._rt};
+            double sz_new[depos_order + 3] = {0.};
+            double sz_old[depos_order + 3] = {0.};
 
             // --- Compute shape factors
             // Compute shape factors for position as they are now and at old positions
             // [ijk]_new: leftmost grid point that the particle touches
-            const int i_new = compute_shape_factor<depos_order>(sx_new+1, x_new);
-            const int i_old = compute_shifted_shape_factor<depos_order>(sx_old, x_old, i_new);
+            const int i_new = compute_shape_factor_dbl<depos_order>(sx_new+1, x_new);
+            const int i_old = compute_shifted_shape_factor_dbl<depos_order>(sx_old, x_old, i_new);
 #if (defined WARPX_DIM_3D)
-            const int j_new = compute_shape_factor<depos_order>(sy_new+1, y_new);
-            const int j_old = compute_shifted_shape_factor<depos_order>(sy_old, y_old, j_new);
+            const int j_new = compute_shape_factor_dbl<depos_order>(sy_new+1, y_new);
+            const int j_old = compute_shifted_shape_factor_dbl<depos_order>(sy_old, y_old, j_new);
 #endif
-            const int k_new = compute_shape_factor<depos_order>(sz_new+1, z_new);
-            const int k_old = compute_shifted_shape_factor<depos_order>(sz_old, z_old, k_new);
+            const int k_new = compute_shape_factor_dbl<depos_order>(sz_new+1, z_new);
+            const int k_old = compute_shifted_shape_factor_dbl<depos_order>(sz_old, z_old, k_new);
 
             // computes min/max positions of current contributions
             int dil = 1, diu = 1;
