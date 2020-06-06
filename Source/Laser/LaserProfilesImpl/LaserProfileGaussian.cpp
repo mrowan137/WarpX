@@ -80,30 +80,35 @@ WarpXLaserProfiles::GaussianLaserProfile::fill_amplitude (
     const int np, Real const * AMREX_RESTRICT const Xp, Real const * AMREX_RESTRICT const Yp,
     Real t, Real * AMREX_RESTRICT const amplitude) const
 {
-    Complex I(0,1);
+    //Complex I(0,1);
+    std::complex<double> I(0, 1);
     // Calculate a few factors which are independent of the macroparticle
-    const Real k0 = 2.*MathConst::pi/m_common_params.wavelength;
-    const Real inv_tau2 = 1._rt /(m_params.duration * m_params.duration);
-    const Real oscillation_phase = k0 * PhysConst::c * ( t - m_params.t_peak );
+    //const Real k0 = 2.*MathConst::pi/m_common_params.wavelength;
+    //const Real inv_tau2 = 1._rt /(m_params.duration * m_params.duration);
+    //const Real oscillation_phase = k0 * PhysConst::c * ( t - m_params.t_peak );
+
+    const double k0 = 2.*MathConst::pi/m_common_params.wavelength;
+    const double inv_tau2 = 1. /(m_params.duration * m_params.duration);
+    const double oscillation_phase = k0 * PhysConst::c * ( t - m_params.t_peak );
     // The coefficients below contain info about Gouy phase,
     // laser diffraction, and phase front curvature
-    const Complex diffract_factor =
-        1._rt + I * m_params.focal_distance * 2._rt/
-        ( k0 * m_params.waist * m_params.waist );
-    const Complex inv_complex_waist_2 =
-        1._rt /(m_params.waist*m_params.waist * diffract_factor );
+    const std::complex<double> diffract_factor =
+        1. + I * double(m_params.focal_distance) * 2./
+        ( k0 * double(m_params.waist * m_params.waist) );
+    const std::complex<double> inv_complex_waist_2 =
+        1. /(double(m_params.waist*m_params.waist) * diffract_factor );
 
     // Time stretching due to STCs and phi2 complex envelope
     // (1 if zeta=0, beta=0, phi2=0)
-    const Complex stretch_factor = 1._rt + 4._rt *
+    const std::complex<double> stretch_factor = 1. + 4. *
         (m_params.zeta+m_params.beta*m_params.focal_distance)
         * (m_params.zeta+m_params.beta*m_params.focal_distance)
-        * (inv_tau2*inv_complex_waist_2) + 2._rt *I * (m_params.phi2
+        * (inv_tau2*inv_complex_waist_2) + 2. *I * (m_params.phi2
         - m_params.beta*m_params.beta*k0*m_params.focal_distance) * inv_tau2;
 
     // Amplitude and monochromatic oscillations
-    Complex prefactor =
-        m_common_params.e_max * amrex::exp( I * oscillation_phase );
+    std::complex<double> prefactor =
+        std::complex<double>(m_common_params.e_max) * std::exp( I * oscillation_phase );
 
     // Because diffract_factor is a complex, the code below takes into
     // account the impact of the dimensionality on both the Gouy phase
@@ -111,30 +116,30 @@ WarpXLaserProfiles::GaussianLaserProfile::fill_amplitude (
 #if (AMREX_SPACEDIM == 3)
     prefactor = prefactor / diffract_factor;
 #elif (AMREX_SPACEDIM == 2)
-    prefactor = prefactor / amrex::sqrt(diffract_factor);
+    prefactor = prefactor / std::sqrt(diffract_factor);
 #endif
 
     // Copy member variables to tmp copies for GPU runs.
-    auto const tmp_profile_t_peak = m_params.t_peak;
-    auto const tmp_beta = m_params.beta;
-    auto const tmp_zeta = m_params.zeta;
-    auto const tmp_theta_stc = m_params.theta_stc;
-    auto const tmp_profile_focal_distance = m_params.focal_distance;
+    const double tmp_profile_t_peak = m_params.t_peak;
+    const double tmp_beta = m_params.beta;
+    const double tmp_zeta = m_params.zeta;
+    const double tmp_theta_stc = m_params.theta_stc;
+    const double tmp_profile_focal_distance = m_params.focal_distance;
     // Loop through the macroparticle to calculate the proper amplitude
     amrex::ParallelFor(
         np,
         [=] AMREX_GPU_DEVICE (int i) {
-            const Complex stc_exponent = 1._rt / stretch_factor * inv_tau2 *
-                amrex::pow((t - tmp_profile_t_peak -
+            const std::complex<double> stc_exponent = 1. / stretch_factor * inv_tau2 *
+                std::pow((t - tmp_profile_t_peak -
                     tmp_beta*k0*(Xp[i]*std::cos(tmp_theta_stc) + Yp[i]*std::sin(tmp_theta_stc)) -
-                    2._rt *I*(Xp[i]*std::cos(tmp_theta_stc) + Yp[i]*std::sin(tmp_theta_stc))
-                    *( tmp_zeta - tmp_beta*tmp_profile_focal_distance ) * inv_complex_waist_2),2);
+                          2.*I*double(Xp[i]*std::cos(tmp_theta_stc) + Yp[i]*std::sin(tmp_theta_stc))
+                          *double( tmp_zeta - tmp_beta*tmp_profile_focal_distance ) * inv_complex_waist_2),2);
             // stcfactor = everything but complex transverse envelope
-            const Complex stcfactor = prefactor * amrex::exp( - stc_exponent );
+            const std::complex<double> stcfactor = prefactor * std::exp( - stc_exponent );
             // Exp argument for transverse envelope
-            const Complex exp_argument = - ( Xp[i]*Xp[i] + Yp[i]*Yp[i] ) * inv_complex_waist_2;
+            const std::complex<double> exp_argument = - (double(Xp[i]*Xp[i] + Yp[i]*Yp[i])) * inv_complex_waist_2;
             // stcfactor + transverse envelope
-            amplitude[i] = ( stcfactor * amrex::exp( exp_argument ) ).real();
+            amplitude[i] = (Real)( stcfactor * std::exp( exp_argument ) ).real();
         }
         );
 }
