@@ -65,14 +65,14 @@ struct InjectorDensityPredefined
         {
         case Profile::parabolic_channel:
         {
-            amrex::Real z_start   = p[0];
-            amrex::Real ramp_up   = p[1];
-            amrex::Real plateau   = p[2];
-            amrex::Real ramp_down = p[3];
-            amrex::Real rc        = p[4];
-            amrex::Real n0        = p[5];
-            amrex::Real n;
-            amrex::Real kp = PhysConst::q_e/PhysConst::c
+            double z_start   = p[0];
+            double ramp_up   = p[1];
+            double plateau   = p[2];
+            double ramp_down = p[3];
+            double rc        = p[4];
+            double n0        = p[5];
+            double n;
+            double kp = PhysConst::q_e/PhysConst::c
                 *std::sqrt( n0/(PhysConst::m_e*PhysConst::ep0) );
 
             // Longitudinal profile, normalized to 1
@@ -90,7 +90,7 @@ struct InjectorDensityPredefined
             }
             // Multiply by transverse profile, and physical density
             n *= n0*(1.+4.*(x*x+y*y)/(kp*kp*rc*rc*rc*rc));
-            return n;
+            return amrex::Real(n);
         }
         default:
             amrex::Abort("InjectorDensityPredefined: how did we get here?");
