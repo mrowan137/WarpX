@@ -1,5 +1,5 @@
 /* Copyright 2019 Axel Huebl, David Grote, Maxence Thevenet
- * Remi Lehe, Weiqun Zhang
+ * Remi Lehe, Weiqun Zhang, Michael Rowan
  *
  * This file is part of WarpX.
  *
@@ -135,23 +135,23 @@ void doDepositionShapeN(const GetParticlePosition& GetPosition,
             // x direction
             // Get particle position after 1/2 push back in position
 #if (defined WARPX_DIM_RZ)
-            const amrex::Real xmid = (rpmid - xmin)*dxi;
+            const double xmid = (rpmid - xmin)*dxi;
 #else
-            const amrex::Real xmid = (xp - xmin)*dxi - dts2dx*vx;
+            const double xmid = (xp - xmin)*dxi - dts2dx*vx;
 #endif
             // j_j[xyz] leftmost grid point in x that the particle touches for the centering of each current
             // sx_j[xyz] shape factor along x for the centering of each current
             // There are only two possible centerings, node or cell centered, so at most only two shape factor
             // arrays will be needed.
-            amrex::Real sx_node[depos_order + 1];
-            amrex::Real sx_cell[depos_order + 1];
+            double sx_node[depos_order + 1];
+            double sx_cell[depos_order + 1];
             int j_node;
             int j_cell;
             if (jx_type[0] == NODE || jy_type[0] == NODE || jz_type[0] == NODE) {
-                j_node = compute_shape_factor<depos_order>(sx_node, xmid);
+                j_node = compute_shape_factor_dbl<depos_order>(sx_node, xmid);
             }
             if (jx_type[0] == CELL || jy_type[0] == CELL || jz_type[0] == CELL) {
-                j_cell = compute_shape_factor<depos_order>(sx_cell, xmid - 0.5);
+                j_cell = compute_shape_factor_dbl<depos_order>(sx_cell, xmid - 0.5);
             }
             const amrex::Real (&sx_jx)[depos_order + 1] = ((jx_type[0] == NODE) ? sx_node : sx_cell);
             const amrex::Real (&sx_jy)[depos_order + 1] = ((jy_type[0] == NODE) ? sx_node : sx_cell);
@@ -162,16 +162,16 @@ void doDepositionShapeN(const GetParticlePosition& GetPosition,
 
 #if (defined WARPX_DIM_3D)
             // y direction
-            const amrex::Real ymid = (yp - ymin)*dyi - dts2dy*vy;
-            amrex::Real sy_node[depos_order + 1];
-            amrex::Real sy_cell[depos_order + 1];
+            const double ymid = (yp - ymin)*dyi - dts2dy*vy;
+            double sy_node[depos_order + 1];
+            double sy_cell[depos_order + 1];
             int k_node;
             int k_cell;
             if (jx_type[1] == NODE || jy_type[1] == NODE || jz_type[1] == NODE) {
-                k_node = compute_shape_factor<depos_order>(sy_node, ymid);
+                k_node = compute_shape_factor_dbl<depos_order>(sy_node, ymid);
             }
             if (jx_type[1] == CELL || jy_type[1] == CELL || jz_type[1] == CELL) {
-                k_cell = compute_shape_factor<depos_order>(sy_cell, ymid - 0.5);
+                k_cell = compute_shape_factor_dbl<depos_order>(sy_cell, ymid - 0.5);
             }
             const amrex::Real (&sy_jx)[depos_order + 1] = ((jx_type[1] == NODE) ? sy_node : sy_cell);
             const amrex::Real (&sy_jy)[depos_order + 1] = ((jy_type[1] == NODE) ? sy_node : sy_cell);
@@ -182,16 +182,16 @@ void doDepositionShapeN(const GetParticlePosition& GetPosition,
 #endif
 
             // z direction
-            const amrex::Real zmid = (zp - zmin)*dzi - dts2dz*vz;
-            amrex::Real sz_node[depos_order + 1];
-            amrex::Real sz_cell[depos_order + 1];
+            const double zmid = (zp - zmin)*dzi - dts2dz*vz;
+            double sz_node[depos_order + 1];
+            double sz_cell[depos_order + 1];
             int l_node;
             int l_cell;
             if (jx_type[zdir] == NODE || jy_type[zdir] == NODE || jz_type[zdir] == NODE) {
-                l_node = compute_shape_factor<depos_order>(sz_node, zmid);
+                l_node = compute_shape_factor_dbl<depos_order>(sz_node, zmid);
             }
             if (jx_type[zdir] == CELL || jy_type[zdir] == CELL || jz_type[zdir] == CELL) {
-                l_cell = compute_shape_factor<depos_order>(sz_cell, zmid - 0.5);
+                l_cell = compute_shape_factor_dbl<depos_order>(sz_cell, zmid - 0.5);
             }
             const amrex::Real (&sz_jx)[depos_order + 1] = ((jx_type[zdir] == NODE) ? sz_node : sz_cell);
             const amrex::Real (&sz_jy)[depos_order + 1] = ((jy_type[zdir] == NODE) ? sz_node : sz_cell);
