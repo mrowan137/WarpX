@@ -385,8 +385,8 @@ void doEsirkepovDepositionShapeN (const GetParticlePosition& GetPosition,
             const Complex xy_new0 = Complex{costheta_new, sintheta_new};
             const Complex xy_mid0 = Complex{costheta_mid, sintheta_mid};
             const Complex xy_old0 = Complex{costheta_old, sintheta_old};
-            Real const x_new = (rp_new - xmin)*dxi;
-            Real const x_old = (rp_old - xmin)*dxi;
+            double const x_new = (rp_new - xmin)*dxi;
+            double const x_old = (rp_old - xmin)*dxi;
 #else
             double const x_new = (xp - xmin)*dxi;
             double const x_old = x_new - dtsdx0*uxp[ip]*gaminv;
