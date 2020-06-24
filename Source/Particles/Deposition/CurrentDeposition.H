@@ -623,10 +623,11 @@ void doEsirkepovDepositionShapeN (const GetParticlePosition& GetPosition,
             // shared memory is allocated per block
             // size of this array should correspond to grid, capture local prtls
             // maybe better this is the size of prtls on a bloack?
-            // TODO: will we oversubscribe?
+            // FURTHER OPTIMIZATION: can J_arr_sm be smaller?
+            // FURTHER OPTIMIZATION: will we oversubscribe shmem for larger problems?
             __shared__ Real J_arr_sm[depos_order+3 + 2][depos_order+3 + 2][3];
 
-            // Todo: parallelize this over particles
+            // FURTHER OPTIMIZATION: parallelize the read by using multiple threads
             if (lid==0)
             {
                 for (int i=0; i<depos_order+3+2; i++)
@@ -860,7 +861,7 @@ void doEsirkepovDepositionShapeN (const GetParticlePosition& GetPosition,
             // Make sure everyone finished current deposit
             __syncthreads();
 
-            // Should parallelize this load
+            // FURTHER OPTIMIZATION: Parallelize the write to glob memory over threads
             // copy tmp smem arrays back to global
             if (lid==0)
             {
@@ -877,7 +878,9 @@ void doEsirkepovDepositionShapeN (const GetParticlePosition& GetPosition,
                     }
                 }
             }
-            __syncthreads();
+            // FURTHER OPTIMIZATION: check this makes no difference
+            // __syncthreads();
+            
             // if (tid==1)
             // {
             //     printf("tid==1, lo.x=%d, lo.y=%d \n",lo.x, lo.y);
