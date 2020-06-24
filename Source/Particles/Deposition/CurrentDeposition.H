@@ -610,8 +610,8 @@ void doEsirkepovDepositionShapeN (const GetParticlePosition& GetPosition,
         np_to_depose,
         [=] AMREX_GPU_DEVICE (long const ip) {
 
-            // Todo: dynamically allocate sharedmem
-            // Todo: are we using too much shared memory?
+            // FURTHER OPTIMIZATION: dynamically allocate sharedmem
+            // FURTHER OPTIMIZATION: are we using too much shared memory?
             //extern __shared__ Real J_arr_sm[];
             
             // global index of thread within the grid;
