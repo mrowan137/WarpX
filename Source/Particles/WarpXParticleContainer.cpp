@@ -298,6 +298,7 @@ WarpXParticleContainer::DepositCurrent(WarpXParIter& pti,
     // Lower corner of tile box physical domain
     // Note that this includes guard cells since it is after tilebox.ngrow
     const Dim3 lo = lbound(tilebox);
+    const Dim3 hi = ubound(tilebox);
     // Take into account Galilean shift
     auto& warpx_instance = WarpX::GetInstance();
     Real cur_time = warpx_instance.gett_new(lev);
@@ -333,7 +334,7 @@ WarpXParticleContainer::DepositCurrent(WarpXParIter& pti,
             doEsirkepovDepositionShapeN<3>(
                 GetPosition, wp.dataPtr() + offset, uxp.dataPtr() + offset,
                 uyp.dataPtr() + offset, uzp.dataPtr() + offset, ion_lev,
-                jx_arr, jy_arr, jz_arr, np_to_depose, dt, dx, xyzmin, lo, q,
+                jx_arr, jy_arr, jz_arr, np_to_depose, dt, dx, xyzmin, lo, hi, q,
                 WarpX::n_rz_azimuthal_modes);
         }
     } else {
