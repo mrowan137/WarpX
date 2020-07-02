@@ -625,19 +625,23 @@ void doEsirkepovDepositionShapeN (const GetParticlePosition& GetPosition,
             // maybe better this is the size of prtls on a bloack?
             // FURTHER OPTIMIZATION: can J_arr_sm be smaller?
             // FURTHER OPTIMIZATION: will we oversubscribe shmem for larger problems?
-            __shared__ Real J_arr_sm[depos_order+3 + 2][depos_order+3 + 2][3];
+	    const int tile_size = 4;
+            __shared__ Real J_arr_sm[depos_order+3 + tile_size][depos_order+3 + tile_size][depos_order+3 + tile_size][3];
 
             // FURTHER OPTIMIZATION: parallelize the read by using multiple threads
             if (lid==0)
             {
-                for (int i=0; i<depos_order+3+2; i++)
+                for (int i=0; i<depos_order+3 + tile_size; i++)
                 {
-                    for (int k=0; k<depos_order+3+2; k++)
-                    {
-                        J_arr_sm[i][k][0] = 0._rt;
-                        J_arr_sm[i][k][1] = 0._rt;
-                        J_arr_sm[i][k][2] = 0._rt;
-                    }
+		  for (int j=0; j<depos_order+3 + tile_size; j++)
+		    {
+		      for (int k=0; k<depos_order+3 + tile_size; k++)
+			{
+			  J_arr_sm[i][j][k][0] = 0._rt;
+			  J_arr_sm[i][j][k][1] = 0._rt;
+			  J_arr_sm[i][j][k][2] = 0._rt;
+			}
+		    }
                 }
             }
             __syncthreads();
@@ -766,7 +770,8 @@ void doEsirkepovDepositionShapeN (const GetParticlePosition& GetPosition,
                     for (int i=dil; i<=depos_order+1-diu; i++) {
                         sdxi += wqx*(sx_old[i] - sx_new[i])*((sy_new[j] + 0.5_rt*(sy_old[j] - sy_new[j]))*sz_new[k] +
                                                              (0.5_rt*sy_new[j] + 1._rt/3._rt*(sy_old[j] - sy_new[j]))*(sz_old[k] - sz_new[k]));
-                        amrex::Gpu::Atomic::Add( &Jx_arr(lo.x+i_new-1+i, lo.y+j_new-1+j, lo.z+k_new-1+k), sdxi);
+                        //amrex::Gpu::Atomic::Add( &Jx_arr(lo.x+i_new-1+i, lo.y+j_new-1+j, lo.z+k_new-1+k),    sdxi);
+			amrex::Gpu::Atomic::Add( &J_arr_sm[   i_new-1+i][     j_new-1+j][     k_new-1+k][0], sdxi);
                     }
                 }
             }
@@ -776,7 +781,8 @@ void doEsirkepovDepositionShapeN (const GetParticlePosition& GetPosition,
                     for (int j=djl; j<=depos_order+1-dju; j++) {
                         sdyj += wqy*(sy_old[j] - sy_new[j])*((sz_new[k] + 0.5_rt*(sz_old[k] - sz_new[k]))*sx_new[i] +
                                                              (0.5_rt*sz_new[k] + 1._rt/3._rt*(sz_old[k] - sz_new[k]))*(sx_old[i] - sx_new[i]));
-                        amrex::Gpu::Atomic::Add( &Jy_arr(lo.x+i_new-1+i, lo.y+j_new-1+j, lo.z+k_new-1+k), sdyj);
+                        //amrex::Gpu::Atomic::Add( &Jy_arr(lo.x+i_new-1+i, lo.y+j_new-1+j, lo.z+k_new-1+k), sdyj);
+			amrex::Gpu::Atomic::Add( &J_arr_sm[   i_new-1+i][     j_new-1+j][     k_new-1+k][1], sdyj); 
                     }
                 }
             }
@@ -786,7 +792,8 @@ void doEsirkepovDepositionShapeN (const GetParticlePosition& GetPosition,
                     for (int k=dkl; k<=depos_order+1-dku; k++) {
                         sdzk += wqz*(sz_old[k] - sz_new[k])*((sx_new[i] + 0.5_rt*(sx_old[i] - sx_new[i]))*sy_new[j] +
                                                              (0.5_rt*sx_new[i] + 1._rt/3._rt*(sx_old[i] - sx_new[i]))*(sy_old[j] - sy_new[j]));
-                        amrex::Gpu::Atomic::Add( &Jz_arr(lo.x+i_new-1+i, lo.y+j_new-1+j, lo.z+k_new-1+k), sdzk);
+                        //amrex::Gpu::Atomic::Add( &Jz_arr(lo.x+i_new-1+i, lo.y+j_new-1+j, lo.z+k_new-1+k), sdzk);
+			amrex::Gpu::Atomic::Add( &J_arr_sm[   i_new-1+i][     j_new-1+j][     k_new-1+k][2], sdzk);
                     }
                 }
             }
@@ -866,16 +873,22 @@ void doEsirkepovDepositionShapeN (const GetParticlePosition& GetPosition,
             if (lid==0)
             {
                 //printf("tid==0, lo.x=%d, lo.y=%d \n",lo.x, lo.y);
-                for (int i=0; i<depos_order+3 + 2; i++)
+                for (int i=0; i<depos_order+3 + tile_size; i++)
                 {
-                    for (int k=0; k<depos_order+3 + 2; k++)
-                    {
-                        //printf("i=%d, k=%d, Jx[i][k]=%f, Jx_sm[i][k]=%f \n",
-                        //       i, k, Jx_arr(lo.x+i, lo.y+k, 0), J_arr_sm[i][k][0]);
-                        amrex::Gpu::Atomic::Add(&Jx_arr(lo.x+i, lo.y+k, 0, 0), J_arr_sm[i][k][0]);
-                        amrex::Gpu::Atomic::Add(&Jy_arr(lo.x+i, lo.y+k, 0, 0), J_arr_sm[i][k][1]);
-                        amrex::Gpu::Atomic::Add(&Jz_arr(lo.x+i, lo.y+k, 0, 0), J_arr_sm[i][k][2]);
-                    }
+		  for (int j=0; j<depos_order+3 + tile_size; j++)
+		    {
+		      for (int k=0; k<depos_order+3 + tile_size; k++)
+			{
+			  //printf("i=%d, k=%d, Jx[i][k]=%f, Jx_sm[i][k]=%f \n",
+			  //       i, k, Jx_arr(lo.x+i, lo.y+k, 0), J_arr_sm[i][k][0]);
+			  amrex::Gpu::Atomic::Add( &Jx_arr(lo.x+i_new-1+i, lo.y+j_new-1+j, lo.z+k_new-1+k), J_arr_sm[i][j][k][0]);
+			  amrex::Gpu::Atomic::Add( &Jy_arr(lo.x+i_new-1+i, lo.y+j_new-1+j, lo.z+k_new-1+k), J_arr_sm[i][j][k][1]);
+			  amrex::Gpu::Atomic::Add( &Jz_arr(lo.x+i_new-1+i, lo.y+j_new-1+j, lo.z+k_new-1+k), J_arr_sm[i][j][k][2]);
+			  //amrex::Gpu::Atomic::Add(&Jx_arr(lo.x+i, lo.y+k, 0, 0), J_arr_sm[i][j][k][0]);
+			  //amrex::Gpu::Atomic::Add(&Jy_arr(lo.x+i, lo.y+k, 0, 0), J_arr_sm[i][j][k][1]);
+			  //amrex::Gpu::Atomic::Add(&Jz_arr(lo.x+i, lo.y+k, 0, 0), J_arr_sm[i][j][k][2]);
+			}
+		    }
                 }
             }
             // FURTHER OPTIMIZATION: check this makes no difference
