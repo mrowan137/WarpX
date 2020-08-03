@@ -14,6 +14,7 @@
 #include <AMReX.H>
 #include <AMReX_BLProfiler.H>
 #include <AMReX_ParallelDescriptor.H>
+#include <AMReX_CuptiTrace.H>
 
 
 int main(int argc, char* argv[])
@@ -35,8 +36,12 @@ int main(int argc, char* argv[])
 #      endif
 #   endif
 #endif
-
+       
     warpx_amrex_init(argc, argv);
+
+#ifdef AMREX_USE_CUPTI
+    CuptiInitialize();
+#endif
 
     // in Debug mode, we need a larger stack limit than usual bc of the parser.
 #if defined(AMREX_USE_CUDA) && defined(AMREX_DEBUG)
@@ -71,6 +76,7 @@ int main(int argc, char* argv[])
     WARPX_PROFILE_VAR_STOP(pmain);
 
     amrex::Finalize();
+
 #if defined(AMREX_USE_MPI)
     MPI_Finalize();
 #endif

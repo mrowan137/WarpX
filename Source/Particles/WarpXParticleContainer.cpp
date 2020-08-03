@@ -19,6 +19,7 @@
 #include "Deposition/ChargeDeposition.H"
 
 #include <AMReX_AmrParGDB.H>
+#include <AMReX_CuptiTrace.H>
 
 #include <limits>
 
@@ -316,6 +317,13 @@ WarpXParticleContainer::DepositCurrent(WarpXParIter& pti,
     }
 
     WARPX_PROFILE_VAR_START(blp_deposit);
+#ifdef AMREX_USE_CUPTI
+    amrex::LayoutData<amrex::Real>* cost = WarpX::getCosts(lev);
+    if (cost && WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::CuptiTimers)
+    {
+        cuptiTraceStart();
+    }
+#endif
     if (WarpX::current_deposition_algo == CurrentDepositionAlgo::Esirkepov) {
         if        (WarpX::nox == 1){
             doEsirkepovDepositionShapeN<1>(
@@ -377,6 +385,14 @@ WarpXParticleContainer::DepositCurrent(WarpXParIter& pti,
                 xyzmin, lo, q, WarpX::n_rz_azimuthal_modes);
         }
     }
+#ifdef AMREX_USE_CUPTI
+    if (cost && WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::CuptiTimers)
+    {
+        cuptiTraceStop();
+        Real wt = computeElapsedTimeUserdata(activityRecordUserdata);
+        amrex::HostDevice::Atomic::Add( &(*cost)[pti.index()], wt);
+    }
+#endif
     WARPX_PROFILE_VAR_STOP(blp_deposit);
 
 #ifndef AMREX_USE_GPU

@@ -54,9 +54,10 @@ const std::map<std::string, int> gathering_algo_to_int = {
 };
 
 const std::map<std::string, int> load_balance_costs_update_algo_to_int = {
-    {"timers",    LoadBalanceCostsUpdateAlgo::Timers },
-    {"heuristic", LoadBalanceCostsUpdateAlgo::Heuristic },
-    {"default",   LoadBalanceCostsUpdateAlgo::Timers }
+    {"timers",      LoadBalanceCostsUpdateAlgo::Timers },
+    {"cuptitimers", LoadBalanceCostsUpdateAlgo::CuptiTimers },
+    {"heuristic",   LoadBalanceCostsUpdateAlgo::Heuristic },
+    {"default",     LoadBalanceCostsUpdateAlgo::Timers }
 };
 
 const std::map<std::string, int> MaxwellSolver_medium_algo_to_int = {
