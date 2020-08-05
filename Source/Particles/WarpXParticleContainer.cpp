@@ -318,11 +318,11 @@ WarpXParticleContainer::DepositCurrent(WarpXParIter& pti,
 
     WARPX_PROFILE_VAR_START(blp_deposit);
 #ifdef AMREX_USE_CUPTI
-    amrex::LayoutData<amrex::Real>* cost = WarpX::getCosts(lev);
-    if (cost && WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::CuptiTimers)
-    {
-        cuptiTraceStart();
-    }
+    //amrex::LayoutData<amrex::Real>* cost = WarpX::getCosts(lev);
+    //if (cost && WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::CuptiTimers)
+    //{
+      //cuptiTraceStart();
+    //}
 #endif
     if (WarpX::current_deposition_algo == CurrentDepositionAlgo::Esirkepov) {
         if        (WarpX::nox == 1){
@@ -386,12 +386,12 @@ WarpXParticleContainer::DepositCurrent(WarpXParIter& pti,
         }
     }
 #ifdef AMREX_USE_CUPTI
-    if (cost && WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::CuptiTimers)
-    {
-        cuptiTraceStop();
-        Real wt = computeElapsedTimeUserdata(activityRecordUserdata);
-        amrex::HostDevice::Atomic::Add( &(*cost)[pti.index()], wt);
-    }
+    //if (cost && WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::CuptiTimers)
+    //{
+      //cuptiTraceStop();
+      //Real wt = 0.;//computeElapsedTimeUserdata(activityRecordUserdata);
+      //amrex::HostDevice::Atomic::Add( &(*cost)[pti.index()], wt);
+    //}
 #endif
     WARPX_PROFILE_VAR_STOP(blp_deposit);
 

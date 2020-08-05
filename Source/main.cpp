@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
     warpx_amrex_init(argc, argv);
 
 #ifdef AMREX_USE_CUPTI
-    CuptiInitialize();
+    //CuptiInitialize();
 #endif
 
     // in Debug mode, we need a larger stack limit than usual bc of the parser.
