@@ -39,10 +39,6 @@ int main(int argc, char* argv[])
        
     warpx_amrex_init(argc, argv);
 
-#ifdef AMREX_USE_CUPTI
-    //CuptiInitialize();
-#endif
-
     // in Debug mode, we need a larger stack limit than usual bc of the parser.
 #if defined(AMREX_USE_CUDA) && defined(AMREX_DEBUG)
     AMREX_CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitStackSize, 20*1024));
