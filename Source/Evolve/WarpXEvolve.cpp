@@ -306,7 +306,20 @@ WarpX::OneStep_nosub (Real cur_time)
 #endif
 
     // Synchronize J and rho
+    amrex::LayoutData<amrex::Real>* cost = WarpX::getCosts(0);
+    if (cost && WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::Timers)
+      {
+	amrex::Gpu::synchronize();
+      }
+    Real wt = amrex::second();
     SyncCurrent();
+    if (cost && WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::Timers)
+      {                         
+	amrex::Gpu::synchronize();
+	wt = amrex::second() - wt;
+	amrex::HostDevice::Atomic::Add( &(*cost)[0], wt);
+      }    
+    amrex::Gpu::synchronize();
     SyncRho();
 
 // Apply current correction in Fourier space: for periodic single-box global FFTs
