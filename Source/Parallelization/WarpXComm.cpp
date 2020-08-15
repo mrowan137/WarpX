@@ -757,6 +757,8 @@ WarpX::RestrictCurrentFromFineToCoarsePatch (int lev)
 void
 WarpX::ApplyFilterandSumBoundaryJ (int lev, PatchType patch_type)
 {
+    WARPX_PROFILE("ApplyFilterandSumBoundaryJ()");
+
     const int glev = (patch_type == PatchType::fine) ? lev : lev-1;
     const auto& period = Geom(glev).periodicity();
     auto& j = (patch_type == PatchType::fine) ? current_fp[lev] : current_cp[lev];
@@ -789,6 +791,8 @@ WarpX::ApplyFilterandSumBoundaryJ (int lev, PatchType patch_type)
 void
 WarpX::AddCurrentFromFineLevelandSumBoundary (int lev)
 {
+    WARPX_PROFILE("AddCurrentFromFineLevelandSumBoundary()");
+
     ApplyFilterandSumBoundaryJ(lev, PatchType::fine);
 
     if (lev < finest_level) {
@@ -964,6 +968,7 @@ WarpX::AddRhoFromFineLevelandSumBoundary(int lev, int icomp, int ncomp)
 void
 WarpX::NodalSyncJ (int lev, PatchType patch_type)
 {
+    WARPX_PROFILE("NodalSyncJ()");
     if (!override_sync_intervals.contains(istep[0])) return;
 
     if (patch_type == PatchType::fine)
