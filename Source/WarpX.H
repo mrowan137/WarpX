@@ -149,6 +149,9 @@ public:
     bool update_with_rho;
 #endif
 
+    static int do_single_precision_comms;
+    static int do_single_precision_mesh;
+
     // div E cleaning
     static int do_dive_cleaning;
 
