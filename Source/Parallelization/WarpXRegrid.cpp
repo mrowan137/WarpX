@@ -47,7 +47,8 @@ WarpX::LoadBalance ()
         // normalized to max cost) for current and proposed distribution mappings
         amrex::Real currentEfficiency = 0.0;
         amrex::Real proposedEfficiency = 0.0;
-
+	
+	amrex::Print() << "I am " << ParallelDescriptor::MyProc() << " before DM\n";
         newdm = (load_balance_with_sfc)
             ? DistributionMapping::makeSFC(*costs[lev],
                                            currentEfficiency, proposedEfficiency,
@@ -61,15 +62,16 @@ WarpX::LoadBalance ()
         // As specified in the above calls to makeSFC and makeKnapSack, the new
         // distribution mapping is NOT communicated to all ranks; the loadbalanced
         // dm is up-to-date only on root, and we can decide whether to broadcast
+	amrex::Print() << "I am " << ParallelDescriptor::MyProc() << " before do lb\n";
         if ((load_balance_efficiency_ratio_threshold > 0.0)
             && (ParallelDescriptor::MyProc() == ParallelDescriptor::IOProcessorNumber()))
         {
             doLoadBalance = (proposedEfficiency > load_balance_efficiency_ratio_threshold*currentEfficiency);
         }
-
         ParallelDescriptor::Bcast(&doLoadBalance, 1,
                                   ParallelDescriptor::IOProcessorNumber());
-
+	
+	amrex::Print() << "I am " << ParallelDescriptor::MyProc() << " before Bcast\n";
         if (doLoadBalance)
         {
             Vector<int> pmap;
@@ -89,6 +91,7 @@ WarpX::LoadBalance ()
 
             RemakeLevel(lev, t_new[lev], boxArray(lev), newdm);
         }
+	amrex::Print() << "I am " << ParallelDescriptor::MyProc() << "after Bcast\n";
     }
     if (doLoadBalance)
     {
