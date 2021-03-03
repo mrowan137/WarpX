@@ -593,7 +593,9 @@ PhysicalParticleContainer::AddPlasma (int lev, RealBox part_realbox)
 #endif
     for (MFIter mfi = MakeMFIter(lev, info); mfi.isValid(); ++mfi)
     {
-        if (cost && WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::Timers)
+        if (cost && WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::Timers
+            //&& load_balance_intervals.contains(step+1)
+            )
         {
             amrex::Gpu::synchronize();
         }
@@ -913,7 +915,9 @@ PhysicalParticleContainer::AddPlasma (int lev, RealBox part_realbox)
 
         amrex::Gpu::synchronize();
 
-        if (cost && WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::Timers)
+        if (cost && WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::Timers
+            //&& load_balance_intervals.contains(step+1)
+            )
         {
             wt = amrex::second() - wt;
             amrex::HostDevice::Atomic::Add( &(*cost)[mfi.index()], wt);
@@ -1149,7 +1153,9 @@ PhysicalParticleContainer::Evolve (int lev,
 
             amrex::Gpu::synchronize();
 
-            if (cost && WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::Timers)
+            if (cost && WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::Timers
+                //&& load_balance_intervals.contains(step+1)
+                )
             {
                 wt = amrex::second() - wt;
                 amrex::HostDevice::Atomic::Add( &(*cost)[pti.index()], wt);
