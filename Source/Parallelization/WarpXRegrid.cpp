@@ -60,8 +60,7 @@ WarpX::LoadBalance ()
                                                 currentEfficiency, proposedEfficiency,
                                                 nmax,
                                                 false,
-                                                ParallelDescriptor::IOProcessorNumber(),
-                                                skip_init);
+                                                ParallelDescriptor::IOProcessorNumber(), skip_init);
         // As specified in the above calls to makeSFC and makeKnapSack, the new
         // distribution mapping is NOT communicated to all ranks; the loadbalanced
         // dm is up-to-date only on root, and we can decide whether to broadcast
