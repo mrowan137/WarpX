@@ -50,6 +50,7 @@ WarpX::LoadBalance ()
         amrex::Real currentEfficiency = 0.0;
         amrex::Real proposedEfficiency = 0.0;
 
+        bool skip_init = (did_a_load_balance) ? true : false;
         newdm = (load_balance_with_sfc)
             ? DistributionMapping::makeSFC(*costs[lev],
                                            currentEfficiency, proposedEfficiency,
@@ -59,7 +60,8 @@ WarpX::LoadBalance ()
                                                 currentEfficiency, proposedEfficiency,
                                                 nmax,
                                                 false,
-                                                ParallelDescriptor::IOProcessorNumber());
+                                                ParallelDescriptor::IOProcessorNumber(),
+                                                skip_init);
         // As specified in the above calls to makeSFC and makeKnapSack, the new
         // distribution mapping is NOT communicated to all ranks; the loadbalanced
         // dm is up-to-date only on root, and we can decide whether to broadcast
@@ -101,6 +103,8 @@ WarpX::LoadBalance ()
     {
         mypc->Redistribute();
         mypc->defineAllParticleTiles();
+
+        did_a_load_balance=true;
     }
 #endif
 }
