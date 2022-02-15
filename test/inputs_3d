@@ -1,6 +1,7 @@
 #################################
 ####### GENERAL PARAMETERS ######
 #################################
+amrex.the_arena_is_managed = 0
 max_step = 100
 amr.n_cell =  64 32 32
 amr.max_grid_size = 32
